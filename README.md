@@ -1,2 +1,4 @@
-# OSCAR
-A compiler for the OSCAR programmatic animation language targeting Python.
+# OSKAR
+A compiler for the OSKAR programmatic animation language targeting Python.
+
+Written by Bryce Summers for Larry Cuba.
