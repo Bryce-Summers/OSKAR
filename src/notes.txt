@@ -35,3 +35,6 @@ Show is a type class that represents types that my be converted to strings with 
 fromIntegral converts integers to general numbers (or floating point's?)
 
 Types are upper case, variables are lower case. This is mandated by the compiler and language specification.
+
+Good stuff about types and typeclasses.
+http://learnyouahaskell.com/making-our-own-types-and-typeclasses

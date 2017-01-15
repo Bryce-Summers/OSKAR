@@ -4,8 +4,9 @@ main = do
         -- use the imperative monads, so we go into a let statement.
         let contents = contents_io
             --line = lineReconstructor contents False
-            tokens = tokenize contents (False, False)
-
+            tokens = tokenizeString contents
+            --syntax_tree = parseSyntaxTree tokens
+            --output = generate_python syntax_tree
         writeFile "output.txt" (unlines tokens)
         --print tokens
 
@@ -18,6 +19,9 @@ lineReconstructor (a:rest) = a : lineReconstructor rest
 
 -- Splits up an input string into atomic syntactic parts.
 -- Input String, (reading_comment, reading_token)
+tokenizeString :: String -> [String]
+tokenizeString input = tokenize input (False, False)
+
 tokenize :: String -> (Bool, Bool) -> [String]
 -- base case, return the empty end of list.
 tokenize [] (_, True)    = []:[]
@@ -95,6 +99,31 @@ tokenize (' ':xs) (_, False)     = tokenize xs (False, False)
 tokenize (x:xs) (False, _)       = let rest_of_name:rest_of_tokens = tokenize xs (False, True)
                                   in (x:rest_of_name):rest_of_tokens
 
+
+-- Here we define the data type for the abstract syntax tree.
+data Transform_Species = Translate | Scale | Rotate deriving (Show, Eq)
+data Transform = Transform { species :: Transform_Species,
+                           , x :: Num
+                           , y :: Num
+                           , z :: Num
+                     } deriving (Show)
+
+-- Show converts the type to a string.
+-- read constructs the type from a string.
+
+instance Show Transform_Species where
+    show Translate = "Translation"
+    show Scale     = "Scale"
+    show Rotate    = "Rotate"
+
+data AST = Empty | List Picture deriving (Show, Read, Eq)
+
+-- Converts a list of tokens into an abstract syntax tree.
+parseSyntaxTree :: [String] -> AST
+parseSyntaxTree input = 
+
+-- Converts an Abstract Syntax tree into a python file in the OSKAR Abstract python generation script.
+generatePython :: AST -> [String]
 
 
 -- alternately, main = print . map readInt . words =<< readFile "test.txt"
