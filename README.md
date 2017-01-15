@@ -5,3 +5,9 @@ Written by Bryce Summers for Larry Cuba.
 
 # Work Diagram
 ![OSKAR work diagram image.](https://github.com/Bryce-Summers/OSKAR/blob/master/images/work_diagram.png "OSKAR work plan.")
+
+# Running
+cd src/
+runhaskell oscar_compiler.hs
+
+Note: Needs the Haskell programming language installed to run.

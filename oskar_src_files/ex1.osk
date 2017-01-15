@@ -16,7 +16,7 @@
 # These pictures were produced with a Python program that simulates 
 # this Oskar code and generates text in the openSCAD language which 
 # then actually draws the images.  The Python code is described at 
-# the end of this document. 
+# the end of this document.
 
 # Syntax for Picture Definition: 
 # PicName << BasisPicName [{iteration variable: no. of iterations} 
