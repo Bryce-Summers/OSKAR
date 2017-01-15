@@ -1,0 +1,421 @@
+# The Oskar Language Project 
+# Demo file #1 - Picture Definitions 
+# This document demonstrates how pictures are defined in the Oskar 
+# programming language.  It assumes the reader has some familiarity 
+# with the project. It's not completely self-explanatory. 
+# An Oskar program consists of a file of definitions of pictures 
+# and functions.  These definitions are used to create an image when 
+# the system is given a "Draw" command and a specific picture to draw. 
+# The reader should have access to the following graphics files that 
+# would be produced by the code in this file: 
+#      Demo Pic01.png 
+#      Demo Pic02.png 
+#      Demo Pic03.png 
+#      Demo Pic04.gif 
+# These pictures were produced with a Python program that simulates 
+# this Oskar code and generates text in the openSCAD language which 
+# then actually draws the images.  The Python code is described at 
+# the end of this document. 
+# Syntax for Picture Definition: 
+# PicName << BasisPicName [{iteration variable: no. of iterations} 
+#                          transform_operator (3D Vector) 
+#                          transform_operator (3D Vector) 
+#                          ... 
+#                          ]  end picture definition 
+# Picture Transformation Operators: 
+#      Scale          * (Sx,Sy,Sz) 
+#      Translation    + (Tx,Ty,Tz) 
+#      Rotation       @ (Rx,Ry,Rz) 
+#  Each operator followed by a 3-D vector (x,y,z) of values for that operation in 
+#                                                 each of the respective dimensions 
+# Precedence is by position: All transformations are performed top 
+#      to bottom on the entire previous entity inside the picture definition. 
+#      No parentheses are needed to make the order explicit. 
+# Python convention: "#" for comments 
+#  "<<" currently means "is a picture defined by" but it may be changed 
+# List of picture definitions 
+# note: if numpix = 1, iteration variable 
+#      not specified. 
+floor
+<<
+cube
+[
+{
+1
+}
+*
+(
+2
+,
+2
+,
+.02
+)
+# 1. scale cube down to very thin slab on z-axis 
+#    and expand to twice size in x and y 
+#    to form background for other pics 
++
+(
+-
+.5
+,
+-
+.5
+,
+-
+.05
+)
+# 2. center in quadrant to form stage 
+]
+row
+<<
+cube
+[
+{
+i:20
+}
++
+(
+-
+.5
+,
+-
+.5
+,
+-
+.5
+)
+# 1. center cube at origin 
+*
+(
+.1
+,
+.025
+,
+.1
+)
+# 2. scale down to small slab 
+@
+(
+0
+,
+(
+i
+*
+9
+)
++
+(
+$t
+*
+360
+)
+,
+0
+)
+# 3. rotate around y axis, 9 degrees per 
+#   iteration; add time factor: one full 
+#   circle per scene. 
++
+(
+0
+,
+i
+*
+.05
+,
+0
+)
+# 4. spread out along y axis 
++
+(
+0
+,
+0
+,
+.05
+)
+# 5. raise up off of floor 
+]
+grid
+<<
+row
+[
+{
+j:7
+}
++
+(
+j
+*
+.11
+,
+0
+,
+0
+)
+# 1. 7 copies of row, spread out along x axis 
+]
+wheel
+<<
+grid
+[
+{
+k:10
+}
++
+(
+-
+1
+,
+0
+,
+-
+.05
+)
+# 1. position grid near y-axis 
+*
+(
+0
+,
+k
+*
+20
+,
+0
+)
+# 2. rotate 10x the grid around y-axis to form wheel 
++
+(
+.5
+,
+0
+,
+.05
+)
+# 3. reposition wheel on floor 
+]
+# 
+# Drawing Commands 
+#      Generic command is: 
+#          Draw {time, total frames}[Picture] 
+#      where [Picture] can be a list of one or more picture names. 
+#       If time spec is left out the default is {0.,1} i.e. one frame 
+#          at time 0. 
+#      Command for DemoPic01.png 
+Draw
+[
+floor
+,
+row
+]
+#      Command for DemoPic02.png 
+Draw
+[
+floor
+,
+grid
+]
+#      Command for DemoPic03.png 
+Draw
+[
+floor
+,
+wheel
+]
+#      Command for Pic04.gif 
+Draw
+{
+150
+}
+[
+floor
+,
+wheel
+]
+#  To specify how many frames to draw and for what time values the syntax is: 
+#       { begin_time, end_time, #_of_frames} 
+#   The defaults are: {0.,1.,1} 
+#   for example: 
+#       { #_of_frames}  # time = 0. to 1. ; same as { 0., 1., #_of_frames} 
+#       { .5, 1}       # one frame at time = .5 
+#       { .25, .5, 100} # draw the sequence with time = .25. to .5 AS IF 
+#                       # the entire sequence from 0. to 1.0 was 100 frames long 
+#       { 0.,1.,1}     # one frame at time = 0.; since this is the default, 
+#                       # the element can be left out entirely as in the commands 
+#                       # to draw the stills above (the .png files) 
+#  If you never need to draw 'row' or 'grid' by themselves (as I did here), 
+# you can define the picture, 'wheel' w/o having to name the intermediate levels. 
+#  In the statement form: 
+#      PicName << BasisPic [{loop spec} (transformation specs)] 
+#          The set of transformations is repeatedly executed upon the "BasisPic", 
+#          but "BasisPic" doesn't have to be the name of a previously defined pic. 
+#          It could just be a picture definition itself. In other words, the picture 
+#          definition can be followed by another set of transformation specs which will 
+#           operate on the picture definition as its BasisPic. 
+#As in (multi-line formatted): 
+#      PicName << BasisPic [{loop spec} (transformation specs)] # this pic def. is the 
+#                          [{loop spec} (transformation specs)] # Basis for this level 
+#                          [{loop spec} (transformation specs)] # which taken together 
+# is the Basis for this 
+# level. 
+# Using this syntax the 'Wheel' picture definition could look like this: 
+wheel
+<<
+cube
+[
+{
+i:20
+}
++
+(
+-
+.5
+,
+-
+.5
+,
+-
+.5
+)
+# 1. center cube at origin 
+*
+(
+.1
+,
+.025
+,
+.1
+)
+# 2. scale down to small slab 
+@
+(
+0
+,
+(
+i
+*
+9
+)
++
+(
+$t
+*
+360
+)
+,
+0
+)
+# 3. rotate around y axis, 9 degrees per 
+#   iteration; add time factor: one full 
+#   circle per scene. 
++
+(
+0
+,
+i
+*
+.05
+,
+0
+)
+# 4. spread out along y axis 
++
+(
+0
+,
+0
+,
+.05
+)
+# 5. raise up off of floor 
+]
+[
+{
+j:7
+}
++
+(
+j
+*
+.11
+,
+0
+,
+0
+)
+# 1. 7 copies of the picture defined above, 
+]
+#  row, spread out along x axis 
+[
+{
+k:10
+}
++
+(
+-
+1
+,
+0
+,
+-
+.05
+)
+# 1. position the picture defined above near y-axis 
+*
+(
+0
+,
+k
+*
+20
+,
+0
+)
+# 2. rotate 10 copies of the picture defined above 
+#    around y-axis to form a wheel 
++
+(
+.5
+,
+0
+,
+.05
+)
+# 3. reposition wheel on floor 
+]
+# Also, in the statement form: 
+#      PicName << BasisPic [{loop spec} (transformation specs)] 
+#          the term, "BasisPic" can be a list of picture names in brackets, 
+#          as in this form: 
+#      PicName << [Pic1, Pic2, ...] [{loop spec} (transformation specs)] 
+#          We see this list-form of a picture definition in this Draw command: 
+Draw
+{
+150
+}
+[
+floor
+,
+wheel
+]
+#      If there is only one picture in the list, then the brackets are optional 
+#          which can be seen in the previous picture definitions where the Basis 
+#          picture names are written "cube", "row", "grid", etc. w/o the brackets. 
+# 
+# The Python/OpenSCAD code 
+#      There are three Python files included in this folder: 
+#          Main07.01.py 
+#          Funs07.01.py 
+#          system07.py 
+#      The file "Main" is comparable to the set of "Draw" commands in Oskar. 
+#      It lists which pictures to draw when the scene is sent to the oSCAD file. 
+#      The picture definitions for 'row', 'grid', and 'wheel' are listed in the 
+#      file "Funs" as instances of the class, 'Picture3'. 
+#      The file "system" is where the class and function definitions reside so 
+#      that Python can interpret the picture definitions and build the comparable 
+#      code in oSCAD to output. 
+#      The "Python_generated.scad" file is the output from the Python code that 
+#      is rendered by oSCAD. 
+# 
+# 
