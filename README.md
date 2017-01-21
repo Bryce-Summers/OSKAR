@@ -8,6 +8,6 @@ Written by Bryce Summers for Larry Cuba.
 
 # Running
 cd src/
-runhaskell oscar_compiler.hs
+runhaskell oskar_compiler.hs
 
 Note: Needs the Haskell programming language installed to run.
