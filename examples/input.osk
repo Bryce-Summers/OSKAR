@@ -56,8 +56,8 @@ row  << cube[{i:20} + (-.5,-.5,-.5)        # 1. center cube at origin
 grid << row [{j:7} + (j*.11,0,0)  # 1. 7 copies of row, spread out along x axis 
            ] 
 wheel<< grid[{k:10} + (-1,0,-.05)  # 1. position grid near y-axis 
-                   * (0,k*20,0)   # 2. rotate 10x the grid around y-axis to form wheel 
-                   + (.5,0,.05)   # 3. reposition wheel on floor 
+                    @ (0,k*20,0)   # 2. rotate 10x the grid around y-axis to form wheel 
+                    + (.5,0,.05)   # 3. reposition wheel on floor 
            ] 
 # 
 # Drawing Commands 
@@ -115,7 +115,7 @@ wheel<< cube[{i:20} + (-.5,-.5,-.5)        # 1. center cube at origin
            [{j:7} + (j*.11,0,0)   # 1. 7 copies of the picture defined above, 
            ]                      #  row, spread out along x axis 
            [{k:10} + (-1,0,-.05)  # 1. position the picture defined above near y-axis 
-                   * (0,k*20,0)   # 2. rotate 10 copies of the picture defined above 
+                   @ (0,k*20,0)   # 2. rotate 10 copies of the picture defined above 
                                   #    around y-axis to form a wheel 
                    + (.5,0,.05)   # 3. reposition wheel on floor 
            ] 
