@@ -119,6 +119,10 @@ tokenize ('@':xs) (_, t)         | t == False = symbol : tokenize xs (False, Fal
                                  | t == True  = [] : symbol : tokenize xs (False, False)
                                  where symbol = "@"
 
+tokenize ('$': xs) (_,t)         | t == False = symbol : tokenize xs (False, False)
+                                 | t == True  = [] : symbol : tokenize xs (False, False)
+                                 where symbol = "Global_"
+
 -- End tokens with spaces, but otherwise ignore them.
 tokenize (' ':xs) (_, True)      = [] : tokenize xs (False, False)
 tokenize (' ':xs) (_, False)     = tokenize xs (False, False)
@@ -316,7 +320,7 @@ generatePython AST {ast_pictures=pictures, ast_drawings=drawCommands} =
         "Compiler written by Bryce Summers\n":
         "Please see https://github.com/Bryce-Summers/OSKAR\n":
         "\"\"\"\n":
-        "#Global Variables\n$t = 0\n\n":
+        "#Global Variables\nGlobal_t = 0\n\n":
         accum2
 
 -- Converts a list of arbitrary type to strings and appends it 
@@ -373,14 +377,25 @@ generateTransforms (NULL:rest) indent = indent ++ error_str "Transform was not P
 
 
 generateDrawCommand :: DrawCommand -> String
-generateDrawCommand drawCommand = "DrawCommand"
+generateDrawCommand (DrawCommand { drawCommand_iterations=iterations,
+                                   drawCommand_pictures=pictureNames}) =
+    let indent1 = ""
+        indent2 = "   "
+    in
+        (generateIteration iterations indent1) ++
+        indent2 ++ "Global_t = i\n" ++
+        (generatePictureCommands pictureNames indent2)
+
+-- function names tokens -> indentation string -> output
+generatePictureCommands :: [String] -> String -> String
+generatePictureCommands (name:",":rest) indent = indent ++ name ++ "()\n" ++ (generatePictureCommands rest indent)
+generatePictureCommands (name:[])       indent = indent ++ name ++ "()\n"
+generatePictureCommands [] _ = ""
+
 
 {-
-data AST = AST {ast_pictures :: [Picture]
-               ,ast_drawings :: [DrawCommand]
-               } --deriving (Show, Read, Eq)
+  Utility functions.
 -}
-
 
 -- alternately, main = print . map readInt . words =<< readFile "test.txt"
 readInt :: String -> Int

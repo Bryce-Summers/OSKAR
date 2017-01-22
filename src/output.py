@@ -9,7 +9,7 @@ Please see https://github.com/Bryce-Summers/OSKAR
 """
 
 #Global Variables
-$t = 0
+Global_t = 0
 
 
 def floor():
@@ -26,7 +26,7 @@ def row():
       pushState()
       Translation(-.5, -.5, -.5)
       Scale(.1, .025, .1)
-      Rotate(0, ( i * 9 ) + ( $t * 360 ), 0)
+      Rotate(0, ( i * 9 ) + ( Global_ t * 360 ), 0)
       Translation(0, i * .05, 0)
       Translation(0, 0, .05)
       
@@ -56,7 +56,7 @@ def wheel_0():
       pushState()
       Translation(-.5, -.5, -.5)
       Scale(.1, .025, .1)
-      Rotate(0, ( i * 9 ) + ( $t * 360 ), 0)
+      Rotate(0, ( i * 9 ) + ( Global_ t * 360 ), 0)
       Translation(0, i * .05, 0)
       Translation(0, 0, .05)
       
@@ -81,8 +81,28 @@ def wheel():
       wheel_1()
       popState()
 
-DrawCommand
-DrawCommand
-DrawCommand
-DrawCommand
-DrawCommand
+for i in range(0, 1):
+   Global_t = i
+   floor()
+   row()
+
+for i in range(0, 1):
+   Global_t = i
+   floor()
+   grid()
+
+for i in range(0, 1):
+   Global_t = i
+   floor()
+   wheel()
+
+for i in range(0, 150):
+   Global_t = i
+   floor()
+   wheel()
+
+for i in range(0, 150):
+   Global_t = i
+   floor()
+   wheel()
+
