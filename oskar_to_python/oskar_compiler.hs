@@ -275,19 +275,16 @@ parseIterations ("{":iteration_count:"}":rest) =
 -- Converts a list of tokens into a list of transforms.
 parseTransforms :: [String] -> [Transform]
 parseTransforms [] = []
-parseTransforms (species:"(":x:",":y:",":z:")":rest) =
-    Transform { transform_species=parseTransformSpecies species, transform_x=x, transform_y=y, transform_z=z}:(parseTransforms rest)
--- Otherwise we need to manually parse the contents.    
 parseTransforms (species:"(":tokens) = 
-    let (x_list, rest1) = parseUntil tokens ","
-        (y_list, rest2) = parseUntil rest1  ","
-        (z_list, rest3) = parseUntil rest2  ")"
+    let (tokens1, rest)  = parseBraket ("(":tokens) "(" ")"
+        (x_list, rest1)  = parseUntil tokens1 ","
+        (y_list, z_list) = parseUntil rest1  ","
         -- http://stackoverflow.com/questions/9220986/is-there-any-haskell-function-to-concatenate-list-with-separator
         x = unwords x_list
         y = unwords y_list
         z = unwords z_list
 
-    in  Transform { transform_species=parseTransformSpecies species, transform_x=x, transform_y=y, transform_z=z}:(parseTransforms rest3)
+    in  Transform { transform_species=parseTransformSpecies species, transform_x=x, transform_y=y, transform_z=z}:(parseTransforms rest)
 parseTransforms other = [NULL]     
 
 
