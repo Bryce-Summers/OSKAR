@@ -1,4 +1,3 @@
-
 # The Oskar Language Project 
 # Demo file #1 - Picture Definitions 
 # This document demonstrates how pictures are defined in the Oskar 
@@ -45,9 +44,9 @@ floor<< cube[{1}   * (2,2,.02)         # 1. scale cube down to very thin slab on
                                        #    to form background for other pics 
                    + (-.5,-.5,-.05)    # 2. center in quadrant to form stage 
            ]
-row  << cube[{i:20} + (-.5,-.5,-.5)        # 1. center cube at origin 
-                    * (.1,.025,.1)          # 2. scale down to small slab 
-                    @ (0,(i*9) + ($t*360),0)# 3. rotate around y axis, 9 degrees per 
+row  << cube[{i:20} + (-.5,-.5,-.5)       # 1. center cube at origin 
+                    * (.1,.025,.1)         # 2. scale down to small slab 
+                    @ (0,(i*9) + ($t*360), 0)# 3. rotate around y axis, 9 degrees per 
                                            #   iteration; add time factor: one full 
                                            #   circle per scene. 
                    + (0,i*.05,0)          # 4. spread out along y axis 

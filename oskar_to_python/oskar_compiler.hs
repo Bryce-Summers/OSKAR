@@ -20,7 +20,7 @@ main = do
                     "\"\"\"\n"
 
             output      = generatePython syntax_tree header
-            {-
+            
             (picture1, tokens1)          = parsePicture tokens
             (picture2, tokens2)          = parsePicture tokens1
             (picture3, tokens3)          = parsePicture tokens2
@@ -31,8 +31,8 @@ main = do
             (Just drawCommand4, tokens8) = parseDrawCommand tokens7
             (picture5, tokens9)          = parsePicture tokens8
             (Just drawCommand5, tokens10)= parseDrawCommand tokens9
-            -}
-        --writeFile "tokens.txt" (unlines tokens)
+            
+        writeFile "tokens.txt" (unlines (tokens_to_debug_words tokens))
         --writeFile "tokens_after_picture.txt" (unlines tokens10)
         writeFile "../python_to_openscad/output.py" (unlines output)
         --print tokens
@@ -46,17 +46,19 @@ lineReconstructor (a:rest) = a : lineReconstructor rest
 
 -- Splits up an input string into atomic syntactic parts.
 -- Input String, (reading_comment, reading_token)
-tokenizeString :: String -> [String]
-tokenizeString input = tokenize input (False, False)
+tokenizeString :: String -> [[String]]
+tokenizeString input = tokenize input (False, False) ("[File Name]", 1, 1)
 
-tokenize :: String -> (Bool, Bool) -> [String]
+ -- string to be tokenized, (currently reading a comment, currently reading a token),
+ -- (Filename, Line number, Column number)
+tokenize :: String -> (Bool, Bool) -> (String, Int, Int) -> [[String]]
 -- base case, return the empty end of list.
-tokenize [] (_, True)    = []:[]
-tokenize [] (_, False)   = []
+tokenize [] (_, True)  _  = []:[]
+tokenize [] (_, False) _  = []
 -- If we see a new line character and we have been reading a token, then we conclude it with an end of list. (End of String.)
-tokenize ('\n':xs) (_, True)  = [] : tokenize xs (False, False)
+tokenize ('\n':xs) (_, True) (f, line, _)  = [] : tokenize xs (False, False) (f, line + 1, 1) -- New Line.
 -- If we are not reading a token and come across a new line, then we just ignore it.
-tokenize ('\n':xs) (_, False) = tokenize xs (False, False)
+tokenize ('\n':xs) (_, False) (f, line, _) = tokenize xs (False, False) (f, line + 1, 1)       -- New Line.
 
 {-|
 --- The following lines of code implement tokenization that generates comment tokens.
@@ -73,77 +75,100 @@ tokenize ('#':xs) (_, False)  = let rest_of_comment:rest_of_tokens = tokenize xs
 
 -- The Following lines implement tokenization that completely ignores comments.
 -- FIXME: Perhaps I should make comment peeling its own function.
-tokenize (x:xs)   (True, _)  = tokenize xs (True, False)
-tokenize ('#':xs) (_, True)  = [] : (tokenize xs (True, False))
-tokenize ('#':xs) (_, False) = tokenize xs (True, False)
+tokenize (x:xs)   (True, _)  (f, line, col) = tokenize xs (True, False)        (f, line, col + 1)
+tokenize ('#':xs) (_, True)  (f, line, col) = [] : (tokenize xs (True, False)) (f, line, col + 1)
+tokenize ('#':xs) (_, False) (f, line, col) = tokenize xs (True, False)        (f, line, col + 1)
 
 
 -- For Simple operators and syntactic symbols, we can directly parse them to tokens.
-tokenize (':':':':xs) (_, t) | t == False = symbol : tokenize xs (False, False)
-                             | t == True  = [] : symbol : tokenize xs (False, False)
-                             where symbol = "::"
-tokenize (':':xs) (_, t)     | t == False = symbol : tokenize xs (False, False)
-                             | t == True  = [] : symbol : tokenize xs (False, False)
-                             where symbol = ":"
-tokenize ('<':'<':'<':xs) (_, t) | t == False = symbol : tokenize xs (False, False)
-                                 | t == True  = [] : symbol : tokenize xs (False, False)
-                                 where symbol = "<<<"
-tokenize ('<':'<':xs) (_, t)     | t == False = symbol : tokenize xs (False, False)
-                                 | t == True  = [] : symbol : tokenize xs (False, False)
-                                 where symbol = "<<"
-tokenize (',':xs) (_, t)         | t == False = symbol : tokenize xs (False, False)
-                                 | t == True  = [] : symbol : tokenize xs (False, False)
-                                 where symbol = ","
-tokenize ('=':xs) (_, t)         | t == False = symbol : tokenize xs (False, False)
-                                 | t == True  = [] : symbol : tokenize xs (False, False)
-                                 where symbol = "="
-tokenize ('*':xs) (_, t)         | t == False = symbol : tokenize xs (False, False)
-                                 | t == True  = [] : symbol : tokenize xs (False, False)
-                                 where symbol = "*"
-tokenize ('/':xs) (_, t)         | t == False = symbol : tokenize xs (False, False)
-                                 | t == True  = [] : symbol : tokenize xs (False, False)
-                                 where symbol = "/"
-tokenize ('+':xs) (_, t)         | t == False = symbol : tokenize xs (False, False)
-                                 | t == True  = [] : symbol : tokenize xs (False, False)
-                                 where symbol = "+"
+tokenize (':':':':xs) (_, t) (f,l,c)
+    | t == False = symbol : tokenize xs (False, False)      (f, l, c + 1)
+    | t == True  = [] : symbol : tokenize xs (False, False) (f, l, c + 1)
+    where symbol = "::":f:(show l):(show c):[]
+tokenize (':':xs) (_, t) (f,l,c)
+    | t == False = symbol : tokenize xs (False, False)      (f, l, c + 1)
+    | t == True  = [] : symbol : tokenize xs (False, False) (f, l, c + 1)
+    where symbol = ":":f:(show l):(show c):[]
+tokenize ('<':'<':'<':xs) (_, t) (f,l,c)
+    | t == False = symbol : tokenize xs (False, False)      (f, l, c + 1)
+    | t == True  = [] : symbol : tokenize xs (False, False) (f, l, c + 1)
+    where symbol = "<<<":f:(show l):(show c):[]
+tokenize ('<':'<':xs) (_, t) (f,l,c)
+    | t == False = symbol : tokenize xs (False, False)      (f, l, c + 1)
+    | t == True  = [] : symbol : tokenize xs (False, False) (f, l, c + 1)
+    where symbol = "<<":f:(show l):(show c):[]
+tokenize (',':xs) (_, t) (f,l,c)
+    | t == False = symbol : tokenize xs (False, False)      (f, l, c + 1)
+    | t == True  = [] : symbol : tokenize xs (False, False) (f, l, c + 1)
+    where symbol = ",":f:(show l):(show c):[]
+tokenize ('=':xs) (_, t) (f,l,c)
+    | t == False = symbol : tokenize xs (False, False)      (f, l, c + 1)
+    | t == True  = [] : symbol : tokenize xs (False, False) (f, l, c + 1)
+    where symbol = "=":f:(show l):(show c):[]
+tokenize ('*':xs) (_, t) (f,l,c)
+    | t == False = symbol : tokenize xs (False, False)      (f, l, c + 1)
+    | t == True  = [] : symbol : tokenize xs (False, False) (f, l, c + 1)
+    where symbol = "*":f:(show l):(show c):[]
+tokenize ('/':xs) (_, t) (f,l,c)
+    | t == False = symbol : tokenize xs (False, False)      (f, l, c + 1)
+    | t == True  = [] : symbol : tokenize xs (False, False) (f, l, c + 1)
+    where symbol = "/":f:(show l):(show c):[]
+tokenize ('+':xs) (_, t) (f,l,c)
+    | t == False = symbol : tokenize xs (False, False)      (f, l, c + 1)
+    | t == True  = [] : symbol : tokenize xs (False, False) (f, l, c + 1)
+    where symbol = "+":f:(show l):(show c):[]
 {-
 tokenize ('-':xs) (_, t)         | t == False = symbol : tokenize xs (False, False)
                                  | t == True  = [] : symbol : tokenize xs (False, False)
                                  where symbol = "-"
 -}
-tokenize ('(':xs) (_, t)         | t == False = symbol : tokenize xs (False, False)
-                                 | t == True  = [] : symbol : tokenize xs (False, False)
-                                 where symbol = "("
-tokenize (')':xs) (_, t)         | t == False = symbol : tokenize xs (False, False)
-                                 | t == True  = [] : symbol : tokenize xs (False, False)
-                                 where symbol = ")"
-tokenize ('[':xs) (_, t)         | t == False = symbol : tokenize xs (False, False)
-                                 | t == True  = [] : symbol : tokenize xs (False, False)
-                                 where symbol = "["
-tokenize (']':xs) (_, t)         | t == False = symbol : tokenize xs (False, False)
-                                 | t == True  = [] : symbol : tokenize xs (False, False)
-                                 where symbol = "]"
-tokenize ('{':xs) (_, t)         | t == False = symbol : tokenize xs (False, False)
-                                 | t == True  = [] : symbol : tokenize xs (False, False)
-                                 where symbol = "{"
-tokenize ('}':xs) (_, t)         | t == False = symbol : tokenize xs (False, False)
-                                 | t == True  = [] : symbol : tokenize xs (False, False)
-                                 where symbol = "}"
-tokenize ('@':xs) (_, t)         | t == False = symbol : tokenize xs (False, False)
-                                 | t == True  = [] : symbol : tokenize xs (False, False)
-                                 where symbol = "@"
+tokenize ('(':xs) (_, t) (f,l,c)
+    | t == False = symbol : tokenize xs (False, False)      (f, l, c + 1)
+    | t == True  = [] : symbol : tokenize xs (False, False) (f, l, c + 1)
+    where symbol = "(":f:(show l):(show c):[]
+tokenize (')':xs) (_, t) (f,l,c)
+    | t == False = symbol : tokenize xs (False, False)      (f, l, c + 1)
+    | t == True  = [] : symbol : tokenize xs (False, False) (f, l, c + 1)
+    where symbol = ")":f:(show l):(show c):[]
+tokenize ('[':xs) (_, t) (f,l,c)
+    | t == False = symbol : tokenize xs (False, False)      (f, l, c + 1)
+    | t == True  = [] : symbol : tokenize xs (False, False) (f, l, c + 1)
+    where symbol = "[":f:(show l):(show c):[]
+tokenize (']':xs) (_, t) (f,l,c)
+    | t == False = symbol : tokenize xs (False, False)      (f, l, c + 1)
+    | t == True  = [] : symbol : tokenize xs (False, False) (f, l, c + 1)
+    where symbol = "]":f:(show l):(show c):[]
+tokenize ('{':xs) (_, t) (f,l,c)
+    | t == False = symbol : tokenize xs (False, False)      (f, l, c + 1)
+    | t == True  = [] : symbol : tokenize xs (False, False) (f, l, c + 1)
+    where symbol = "{":f:(show l):(show c):[]
+tokenize ('}':xs) (_, t) (f,l,c)
+    | t == False = symbol : tokenize xs (False, False)      (f, l, c + 1)
+    | t == True  = [] : symbol : tokenize xs (False, False) (f, l, c + 1)
+    where symbol = "}":f:(show l):(show c):[]
+tokenize ('@':xs) (_, t) (f,l,c)
+    | t == False = symbol : tokenize xs (False, False)      (f, l, c + 1)
+    | t == True  = [] : symbol : tokenize xs (False, False) (f, l, c + 1)
+    where symbol = "@":f:(show l):(show c):[]
 
 
 -- Substitute $ signs for the prefix "Global_"
-tokenize ('$': xs) (_,t)         = tokenize ('G':'l':'o':'b':'a':'l':'_':xs)(False, t)
+-- We need to subtract enough letters for the Global_ to ensure proper column numbers after this point.
+tokenize ('$': xs) (_,t) (f,l,c) = tokenize ('G':'l':'o':'b':'a':'l':'_':xs)(False, t) (f, l, c - 1)
 
 -- End tokens with spaces, but otherwise ignore them.
-tokenize (' ':xs) (_, True)      = [] : tokenize xs (False, False)
-tokenize (' ':xs) (_, False)     = tokenize xs (False, False)
+tokenize (' ':xs) (_, True)  (f,l,c) = [] : tokenize xs (False, False) (f, l, c + 1)
+tokenize (' ':xs) (_, False) (f,l,c) = tokenize xs (False, False)      (f, l, c + 1)
 
 -- Everything else are names.
-tokenize (x:xs) (False, _)       = let rest_of_name:rest_of_tokens = tokenize xs (False, True)
-                                   in (x:rest_of_name):rest_of_tokens
+tokenize (x:xs) (False, _) (f,l,c) = let token:rest_of_tokens = tokenize xs (False, True) (f, l, c + 1)
+                                         line   = show l
+                                         column = show c
+                                     in case token of
+                                         name:rest_of_token ->
+                                             ((x:name):f:(show l):(show c):[]):rest_of_tokens
+                                         [] ->
+                                             ((x:[]):f:(show l):(show c):[]):rest_of_tokens
 
 
 -- Here we define the data type for the abstract syntax tree and a healthy collection of lower level types.
@@ -161,7 +186,7 @@ data Transform = Transform { transform_species :: Transform_Species
                             ,transform_x :: String
                             ,transform_y :: String
                             ,transform_z :: String
-                           } | NULL-- deriving (Show)
+                           } -- deriving (Show)
 data Transform_Species = Translate | Scale | Rotate --deriving (Show, Eq)
 
 data Iteration = Iteration { iteration_variable :: String -- The iteration variable. e.g. 'i', 'j', etc.
@@ -172,6 +197,10 @@ data Iteration = Iteration { iteration_variable :: String -- The iteration varia
 data DrawCommand =  DrawCommand { drawCommand_iterations  :: Iteration
                                  , drawCommand_pictures   :: [String]
                                 }
+
+-- Token String, Filename String, Line number, Column number.
+-- TokenString:Filename:LineNumber:Column number.
+-- data Token = [[String]] Processed tokens are lists of strings.
 
 --data PictureName = String
 
@@ -186,16 +215,16 @@ instance Show Transform_Species where
 
 
 -- Converts a list of tokens into an abstract syntax tree.
-parseSyntaxTree :: [String] -> AST
+parseSyntaxTree :: [[String]] -> AST
 parseSyntaxTree tokens =
     _parseSyntaxTree tokens [] []
 
 -- tokens -> Pictures accumulator -> DrawCommands accumulator -> output
-_parseSyntaxTree :: [String] -> [Picture] -> [DrawCommand] -> AST
+_parseSyntaxTree :: [[String]] -> [Picture] -> [DrawCommand] -> AST
 -- Handle Empty List.
 _parseSyntaxTree [] pics draws = AST {ast_pictures=pics, ast_drawings=draws}
 -- Handle Picture definition.
-_parseSyntaxTree (tokens@(name:"<<":rest)) pictures drawCommands = 
+_parseSyntaxTree (tokens@((name:_):("<<":_):rest)) pictures drawCommands = 
     let (picture, rest_of_tokens) = parsePicture tokens
     in  _parseSyntaxTree rest_of_tokens (picture ++ pictures) drawCommands
 -- Handle Draw Command.
@@ -209,20 +238,21 @@ _parseSyntaxTree tokens pictures drawCommands =
 
 
 -- Parses the front of a sequence of tokens into a picture and the remainder of the token list.
-parsePicture :: [String] -> ([Picture], [String])
-parsePicture (name:"<<":basis_name:rest)   = 
+parsePicture :: [[String]] -> ([Picture], [[String]])
+parsePicture ((name:_):("<<":_):(basis_name:_):rest) = 
+    -- FIXME: Do we need error data to be passed for these tokens?
     parseAnonymousPicture name basis_name rest [] 0
 
 -- Labeled name -> basis_name -> Tokens -> Pictures Parsed thus far -> index_of_anonymous_function -> (Pictures parsed, [Rest of Tokens])
-parseAnonymousPicture :: String -> String -> [String] -> [Picture] -> Int -> ([Picture], [String])
-parseAnonymousPicture name basis_name ("[":rest) pictures index =
-    let (tokens, tokens_after_picture) = parseBraket ("[":rest) "[" "]"
+parseAnonymousPicture :: String -> String -> [[String]] -> [Picture] -> Int -> ([Picture], [[String]])
+parseAnonymousPicture name basis_name (("[":rt):rest) pictures index =
+    let (tokens, tokens_after_picture) = parseBraket (("[":rt):rest) "[" "]"
         (iterations, transform_tokens) = parseIterations tokens
         (transforms)                   = parseTransforms transform_tokens
     in
-    -- Keep parsing from bottom up untill we run out of picture definitions.
+    -- Keep parsing from bottom up until we run out of picture definitions.
         case tokens_after_picture of
-            ("[": rest1) -> parseAnonymousPicture
+            (("[":rt):rest1) -> parseAnonymousPicture
                                         name
                                         anon_name
                                         (tokens_after_picture)
@@ -231,73 +261,115 @@ parseAnonymousPicture name basis_name ("[":rest) pictures index =
             otherwise                -> ((Picture {picture_name=name, picture_basis=basis_name, picture_transforms=transforms, picture_iterations=iterations}):pictures,
                                         tokens_after_picture)
         where anon_name = name ++ "_" ++ (show index)
+parseAnonymousPicture name basis_name ((_:f:l:c:[]):rest) pictures index =
+    error ("Picture Parsing has failed, perhaps you are missing a leading parentheses? " ++ debug f l c)
                                         
 
--- Converts the front of a sequence of tokens containing the initial scop of the input left and right bracket strings
--- into a set of strings in the front and the set of strings after the parse.
+-- Converts the front of a sequence of tokens encompassing the scope of the matched pair of left and right brakets
+-- into a list of tokens within the scope, and a list of tokens that follow.
 -- Tokens -> left braket -> right braket -> (parsed_tokens, rest_of_the_tokens)
-parseBraket :: [String] -> String -> String -> ([String], [String])
+parseBraket :: [[String]] -> String -> String -> ([[String]], [[String]])
 -- Reduce to a helper function with a count variable.
-parseBraket tokens@(first_token:rest_of_tokens) left_braket right_braket
-    | (first_token == left_braket) = _parseBraket rest_of_tokens left_braket right_braket  1
+parseBraket tokens@((first_token:f:l:c:[]):rest_of_tokens) left_braket right_braket
+    | (first_token == left_braket) =
+        let result = _parseBraket rest_of_tokens left_braket right_braket 1
+        in
+            case result of 
+                Nothing -> error ("No Right Parentheses! " ++ debug f l c)
+                Just something -> something
+
     | (first_token /= left_braket) = ([], tokens) -- The string of brakets is not present at the head of the input string of tokens.
 
-_parseBraket :: [String] -> String -> String -> Int -> ([String], [String])
+_parseBraket :: [[String]] -> String -> String -> Int -> Maybe ([[String]], [[String]])
+_parseBraket [] _ _ _ = Nothing
 -- Handle left parentheses.
-_parseBraket (token:rest) left_braket right_braket count
+_parseBraket ((token:rt):rest) left_braket right_braket count
 -- Left Parens.
     | token == left_braket = 
-        let (output_tokens, rest_of_tokens) = _parseBraket rest left_braket right_braket (count + 1)
-        in  (output_tokens, rest_of_tokens)
+        let result = _parseBraket rest left_braket right_braket (count + 1)
+        in
+            case result of
+                Nothing -> Nothing
+                Just (output_tokens, rest_of_tokens) ->
+                    Just ((token:rt):output_tokens, rest_of_tokens)
 -- Right Parens.
 -- We use a 1, because we want To omit the left parens.
-    | (token == right_braket) && (count == 1) = ([], rest)
+    | (token == right_braket) && (count == 1) = Just ([], rest)
     | (token == right_braket) && (count > 1)  = -- (/=) is the not equal operator.
-            let (output_tokens, rest_of_tokens) = _parseBraket rest left_braket right_braket (count - 1)
-            in  (right_braket:output_tokens, rest_of_tokens)
+        let result = _parseBraket rest left_braket right_braket (count - 1)
+        in
+            case result of
+                Nothing -> Nothing
+                Just (output_tokens, rest_of_tokens) ->
+                    Just ((token:rt):output_tokens, rest_of_tokens)
     | otherwise =
-        let (output_tokens, rest_of_tokens) = _parseBraket rest left_braket right_braket count
-        in  (token:output_tokens, rest_of_tokens)
+        let result = _parseBraket rest left_braket right_braket count
+        in
+            case result of
+                Nothing -> Nothing
+                Just (output_tokens, rest_of_tokens) ->
+                    Just ((token:rt):output_tokens, rest_of_tokens)
+
 
 
 
 -- Parse the head of a list of tokens to an iteration data structure and the remainder of the tokens.
 -- Tokens in -> (Iteration, The rest of the tokens.)
-parseIterations :: [String] -> (Iteration, [String])
+parseIterations :: [[String]] -> (Iteration, [[String]])
 -- {i:80}
-parseIterations ("{":variable_name:":":iteration_count:"}":rest) = 
+parseIterations (("{":_):(variable_name:_):(":":_):(iteration_count:_):("}":_):rest) = 
     (Iteration {iteration_variable=variable_name, iteration_begin=0, iteration_end=(readInt iteration_count)}, rest)
 -- {80}
-parseIterations ("{":iteration_count:"}":rest) =
+parseIterations (("{":_):(iteration_count:_):("}":_):rest) =
     (Iteration {iteration_variable="i", iteration_begin=0, iteration_end=(readInt iteration_count)}, rest)
 
 
 -- Converts a list of tokens into a list of transforms.
-parseTransforms :: [String] -> [Transform]
+parseTransforms :: [[String]] -> [Transform]
 parseTransforms [] = []
-parseTransforms (species:"(":tokens) = 
-    let (tokens1, rest)  = parseBraket ("(":tokens) "(" ")"
-        (x_list, rest1)  = parseUntil tokens1 ","
-        (y_list, z_list) = parseUntil rest1  ","
-        -- http://stackoverflow.com/questions/9220986/is-there-any-haskell-function-to-concatenate-list-with-separator
-        x = unwords x_list
-        y = unwords y_list
-        z = unwords z_list
-
-    in  Transform { transform_species=parseTransformSpecies species, transform_x=x, transform_y=y, transform_z=z}:(parseTransforms rest)
-parseTransforms other = [NULL]     
+parseTransforms ((species:_):("(":rb):tokens) = 
+    let (tokens1, rest)  = parseBraket (("(":rb):tokens) "(" ")"
+        result1  = parseUntil tokens1 ","
+        f:l:c:[] = rb
+        in case result1 of 
+            Nothing -> error ("Perhaps you are missing a comma. " ++ debug f l c)
+            Just (x_list, rest1) ->
+                let 
+                    result2 = parseUntil rest1  ","
+                in case result2 of 
+                    Nothing -> error ("Perhaps you are missing a comma. " ++ debug f l c)
+                    Just (y_list, z_list) ->
+                        let 
+                            -- http://stackoverflow.com/questions/9220986/is-there-any-haskell-function-to-concatenate-list-with-separator
+                            x = unwords (tokens_to_words x_list)
+                            y = unwords (tokens_to_words y_list)
+                            z = unwords (tokens_to_words z_list)
+                        in  Transform { transform_species=parseTransformSpecies species, transform_x=x, transform_y=y, transform_z=z}:(parseTransforms rest)
+parseTransforms ((name:f:l:c:[]):rest) = error ("Transform was not Parsed " ++ debug f l c)
 
 
 -- Tokens_in -> Token searching for -> (tokens peeled off, tokens after searched for string.)
 -- Currently, this returns all tokens if the given string is never found.
-parseUntil :: [String] -> String -> ([String], [String])
-parseUntil [] _ = ([], [])
-parseUntil (token:rest) search
-    | token == search = ([], rest)
-    | token /= search = 
-        let (tokens_before, tokens_after) = parseUntil rest search
-        in  (token:tokens_before, tokens_after)
+parseUntil :: [[String]] -> String -> Maybe ([[String]], [[String]])
+parseUntil [] _ = Nothing
+parseUntil ((name:rt):rest) search
+    | name == search = Just ([], rest) -- If the name of the token matches the searched for name, we have found our partition.
+    | name /= search =
+        let result = parseUntil rest search
+        in case result of
+            Nothing -> Nothing
+            Just (tokens_before, tokens_after) ->
+                Just ((name:rt):tokens_before, tokens_after)
 
+-- Converts a list of tokens into a list of strings,
+-- In other words, this removes the file:line:column metadata.
+tokens_to_words :: [[String]] -> [String]
+tokens_to_words [] = []
+tokens_to_words ((name:_):rest) = name:(tokens_to_words rest)
+
+tokens_to_debug_words :: [[String]] -> [String]
+tokens_to_debug_words [] = []
+tokens_to_debug_words ((name:f:l:c:[]):rest) = (name ++ "  " ++ f ++ "  " ++ l ++ "  " ++ c):(tokens_to_debug_words rest)
 
 parseTransformSpecies :: String -> Transform_Species
 parseTransformSpecies "*" = Scale
@@ -306,15 +378,15 @@ parseTransformSpecies "@" = Rotate
 
 
 -- Parses the front of a list of tokens
-parseDrawCommand :: [String] -> (Maybe DrawCommand, [String])
-parseDrawCommand (name:"{":rest) = 
-    let (iteration, rest1)        = parseIterations ("{":rest)
+parseDrawCommand :: [[String]] -> (Maybe DrawCommand, [[String]])
+parseDrawCommand ((name:_):("{":rb):rest) = 
+    let (iteration, rest1)        = parseIterations (("{":rb):rest)
         (pictures, rest2)  = parseBraket rest1 "[" "]"
-    in  (Just DrawCommand { drawCommand_iterations=iteration, drawCommand_pictures=pictures}, rest2)
-parseDrawCommand (name:"[":rest) =
+    in  (Just DrawCommand { drawCommand_iterations=iteration, drawCommand_pictures=tokens_to_words pictures}, rest2)
+parseDrawCommand ((name:_):("[":rb):rest) =
     let iteration = Iteration { iteration_variable = "i", iteration_begin=0, iteration_end=1}
-        (pictures, rest1)  = parseBraket ("[":rest) "[" "]"
-    in  (Just DrawCommand { drawCommand_iterations=iteration, drawCommand_pictures=pictures}, rest1)
+        (pictures, rest1)  = parseBraket (("[":rb):rest) "[" "]"
+    in  (Just DrawCommand { drawCommand_iterations=iteration, drawCommand_pictures=tokens_to_words pictures}, rest1)
 -- No DrawCommand is present here.
 parseDrawCommand tokens = (Nothing, tokens)
 
@@ -400,10 +472,6 @@ generateTransforms (Transform{transform_species = species,
                     indentation_string ++
                     "scene."++ (show species) ++ "(" ++ quote x ++ ", " ++ quote y ++ ", " ++ quote z ++ ")\n" ++
                     (generateTransforms rest indentation_string)
-generateTransforms (NULL:rest) indent = indent ++ error_str "Transform was not Parsed" ++ (generateTransforms rest indent)
-
-
-
 
 generateDrawCommand :: DrawCommand -> String
 generateDrawCommand (DrawCommand { drawCommand_iterations=iterations,
@@ -438,6 +506,9 @@ readInt = read
 
 error_str :: String -> String
 error_str str = "!!! ERROR: " ++ str ++ " !!!\n"
+
+debug :: String -> String -> String -> String
+debug f l c = "File: " ++ f ++ ", Line: " ++ l ++", Column: " ++ c
 
 -- Encloses the given string in quotes.
 quote::String -> String
