@@ -151,11 +151,16 @@ class Picture:
         if self.isDrawCommand:
             return
 
+        # Assuming we always go from 0 to 1 with end steps...
+        step = 1.0 / end
+
         self.text.append(self.indent1 + "Global_t = $t;")
-        self.text.append(self.indent1 + "begin = " + str(begin) + ";")
-        self.text.append(self.indent1 + "end   = " + str(end) + ";")        
-        self.text.append(self.indent1 + "// Iteration from [begin,end)")
-        self.text.append(self.indent1 + "for (" + var + "=[begin:end - 1])")
+        #self.text.append(self.indent1 + "begin = 0;")
+        self.text.append(self.indent1 + "steps = " + str(end) + ";")
+        self.text.append(self.indent1 + "step_size = 1.0/steps;")
+        #self.text.append(self.indent1 + "end   = 1;")
+        self.text.append(self.indent1 + "// Iteration from 0 to 1 in " + str(end) + " equal steps.")
+        self.text.append(self.indent1 + "for (" + var + "=[0:step_size:1])")
         self.text.append(self.indent1 + "{")
 
 

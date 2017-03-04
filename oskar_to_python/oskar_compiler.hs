@@ -81,6 +81,10 @@ tokenize ('#':xs) (_, False) (f, line, col) = tokenize xs (True, False)        (
 
 
 -- For Simple operators and syntactic symbols, we can directly parse them to tokens.
+tokenize (':':':':':':xs) (_, t) (f,l,c)
+    | t == False = symbol : tokenize xs (False, False)      (f, l, c + 1)
+    | t == True  = [] : symbol : tokenize xs (False, False) (f, l, c + 1)
+    where symbol = ":::":f:(show l):(show c):[]
 tokenize (':':':':xs) (_, t) (f,l,c)
     | t == False = symbol : tokenize xs (False, False)      (f, l, c + 1)
     | t == True  = [] : symbol : tokenize xs (False, False) (f, l, c + 1)
@@ -174,6 +178,7 @@ tokenize (x:xs) (False, _) (f,l,c) = let token:rest_of_tokens = tokenize xs (Fal
 -- Here we define the data type for the abstract syntax tree and a healthy collection of lower level types.
 data AST = AST {ast_pictures :: [Picture]
                ,ast_drawings :: [DrawCommand]
+               ,ast_functions:: [Function]
                } --deriving (Show, Read, Eq)
 
 data Picture = Picture { picture_name  :: String  
@@ -187,7 +192,22 @@ data Transform = Transform { transform_species :: Transform_Species
                             ,transform_y :: String
                             ,transform_z :: String
                            } -- deriving (Show)
+
 data Transform_Species = Translate | Scale | Rotate --deriving (Show, Eq)
+
+-- Single Valued function (name, arguments, expression) or
+-- 3-valued vector (name, arguments, x_expression, y_expression, z_expression)
+-- Type is based on the cardinalitty of the expression list.
+data Function = Function { function_name        :: String   -- Name of function.
+                         , function_arguments   :: [String] -- symbolic variable names for the arguments that will be passed in.
+                         , function_expressions :: [Expression] -- A vector of expressions. Single valued functions will have lists of length 1.
+                         }
+
+data Function_Type = Scalar | Vector
+
+-- (x, y, z) FIXME: Rewrite Transform in terms of Expressions.
+-- This is sufficiently general enough that I can continue to use this if we go to higher dimensions.
+type Expression = String
 
 data Iteration = Iteration { iteration_variable :: String -- The iteration variable. e.g. 'i', 'j', etc.
                             ,iteration_begin :: Int       -- The iteration this variable will start at.
@@ -198,11 +218,15 @@ data DrawCommand =  DrawCommand { drawCommand_iterations  :: Iteration
                                  , drawCommand_pictures   :: [String]
                                 }
 
+-- Parse States used to communicate up and down recursive parse function calls.
+-- Name refers to definition variable names. Left_Paren -> '(', Left_Curly -> '{', Done indicates a state of normalcy.
+data ParseState = Name | Left_Paren| Left_Curly | Done
+
 -- Token String, Filename String, Line number, Column number.
 -- TokenString:Filename:LineNumber:Column number.
 -- data Token = [[String]] Processed tokens are lists of strings.
 
---data PictureName = String
+-- data PictureName = String
 
 
 -- Show converts the type to a string.
@@ -217,24 +241,45 @@ instance Show Transform_Species where
 -- Converts a list of tokens into an abstract syntax tree.
 parseSyntaxTree :: [[String]] -> AST
 parseSyntaxTree tokens =
-    _parseSyntaxTree tokens [] []
+    _parseSyntaxTree tokens [] [] []
 
--- tokens -> Pictures accumulator -> DrawCommands accumulator -> output
-_parseSyntaxTree :: [[String]] -> [Picture] -> [DrawCommand] -> AST
+-- tokens -> Pictures accumulator -> DrawCommands accumulator -> Function Accumulator -> output
+_parseSyntaxTree :: [[String]] -> [Picture] -> [DrawCommand] -> [Function] -> AST
 -- Handle Empty List.
-_parseSyntaxTree [] pics draws = AST {ast_pictures=pics, ast_drawings=draws}
+_parseSyntaxTree [] pics draws funcs = AST {ast_pictures=pics, ast_drawings=draws, ast_functions=funcs}
 -- Handle Picture definition.
-_parseSyntaxTree (tokens@((name:_):("<<":_):rest)) pictures drawCommands = 
+_parseSyntaxTree (tokens@((name:_):("<<":_):rest)) pictures drawCommands funcs = 
     let (picture, rest_of_tokens) = parsePicture tokens
-    in  _parseSyntaxTree rest_of_tokens (picture ++ pictures) drawCommands
+    in  _parseSyntaxTree rest_of_tokens (picture ++ pictures) drawCommands funcs
+
+--_parseSyntaxTree (tokens@((name:_):("<<<":_):rest)) pictures drawCommands funcs = 
+--    let (picture, rest_of_tokens) = parsePicture tokens
+--    in  _parseSyntaxTree rest_of_tokens (picture ++ pictures) drawCommands funcs
+-- Picture function.
+
+-- Functions and picture functions. We recognize them by their "(" arguments"
+_parseSyntaxTree ((name:_):("(":rp):rest) pictures drawCommands funcs =
+    let (arguments, (def_symbol:_):rest1) = parseBraket (("(":rp):rest) "(" ")"
+    in case def_symbol of
+        --"<<<" -> -- Picture Function / Picture FIXME: Not yet implemented.
+        --"<<"  -> -- Picture Function / Picture
+        "::"  -> -- Singular Function Symbol.
+            let (function, rest_of_tokens) = parseFunction name (parseExpressionList arguments) Scalar rest1
+            in _parseSyntaxTree rest_of_tokens pictures drawCommands funcs
+        ":::" -> -- Vector Valued Function Symbol.
+            let (function, rest_of_tokens) = parseFunction name (parseExpressionList arguments) Vector rest1
+            in _parseSyntaxTree rest_of_tokens pictures drawCommands funcs
+
 -- Handle Draw Command.
-_parseSyntaxTree tokens pictures drawCommands =
+_parseSyntaxTree tokens pictures drawCommands funcs =
     let (result, rest_of_tokens) = parseDrawCommand tokens
     in  case result of
           Just drawCommand ->
-            _parseSyntaxTree rest_of_tokens pictures (drawCommand:drawCommands)
-        -- If we encounter a non-parsable region, then we conclude the parsing.
-          Nothing -> _parseSyntaxTree [] pictures drawCommands
+            _parseSyntaxTree rest_of_tokens pictures (drawCommand:drawCommands) funcs
+          -- If we encounter a non-parsable region, then we conclude the parsing.
+          -- FIXME: If we conclude the parsing, then perhaps we should have alerted an error message, instead of passing an option type back up here.
+          Nothing -> _parseSyntaxTree [] pictures drawCommands funcs
+
 
 
 -- Parses the front of a sequence of tokens into a picture and the remainder of the token list.
@@ -267,6 +312,7 @@ parseAnonymousPicture name basis_name ((_:f:l:c:[]):rest) pictures index =
 
 -- Converts the front of a sequence of tokens encompassing the scope of the matched pair of left and right brakets
 -- into a list of tokens within the scope, and a list of tokens that follow.
+-- the output list does not contain the starting and ending brackets!
 -- Tokens -> left braket -> right braket -> (parsed_tokens, rest_of_the_tokens)
 parseBraket :: [[String]] -> String -> String -> ([[String]], [[String]])
 -- Reduce to a helper function with a count variable.
@@ -310,8 +356,20 @@ _parseBraket ((token:rt):rest) left_braket right_braket count
                 Just (output_tokens, rest_of_tokens) ->
                     Just ((token:rt):output_tokens, rest_of_tokens)
 
+-- Parses a function from the given name, list of arguments, and the prefix to a stream of tokens,
+-- which contain the function's expression.
+-- Name of function -> List of argument names, Tokens -> (Funtion, rest_of_tokens)
+parseFunction :: String -> [Expression] -> Function_Type -> [[String]] -> (Function, [[String]])
+-- Singleton Function.
+parseFunction name arguments Scalar tokens = 
+    let (expression, rest) = parseUntilDefinition tokens
+    in (Function { function_name = name, function_arguments = arguments, function_expressions = [expression]}, rest)
 
-
+-- 3-valued function.
+parseFunction name arguments Vector tokens@(("[":_):_) =
+    let (expression_tokens, rest) = parseBraket tokens "[" "]"
+        expressions = parseExpressionList expression_tokens
+    in (Function { function_name = name, function_arguments = arguments, function_expressions = expression}, rest)
 
 -- Parse the head of a list of tokens to an iteration data structure and the remainder of the tokens.
 -- Tokens in -> (Iteration, The rest of the tokens.)
@@ -323,33 +381,57 @@ parseIterations (("{":_):(variable_name:_):(":":_):(iteration_count:_):("}":_):r
 parseIterations (("{":_):(iteration_count:_):("}":_):rest) =
     (Iteration {iteration_variable="i", iteration_begin=0, iteration_end=(readInt iteration_count)}, rest)
 
-
 -- Converts a list of tokens into a list of transforms.
 parseTransforms :: [[String]] -> [Transform]
-parseTransforms [] = []
-parseTransforms ((species:_):("(":rb):tokens) = 
-    let (tokens1, rest)  = parseBraket (("(":rb):tokens) "(" ")"
+parseTransforms ((species:_):tokens) = 
+    let (x, y, z, rest) = parse3List tokens "(" ")"
+    in Transform { transform_species=parseTransformSpecies species, transform_x=x, transform_y=y, transform_z=z}:(parseTransforms rest)
+
+-- Parses a list of the form [exp, exp, exp], where each exp was initially made up of tokens,
+-- if left_p = "[" and right_p = "]"
+-- Tokens -> (x, y, z, rest_of_tokens)
+-- Tokens -> left_p -> right_p -> (x, y, z, rest_of_tokens)
+parse3List:: [[String]] -> String -> String -> (String, String, String, [[String]])
+parse3List [] left_p right_p = [] -- this shouldn't really happen, this would be an erroneous call.
+parse3List ((syb:rb):tokens) left_p right_p =
+    let left_p == syb = True
+        (tokens1, rest)  = parseBraket ((left_p:rb):tokens) left_p right_p
         result1  = parseUntil tokens1 ","
         f:l:c:[] = rb
-        in case result1 of 
+        in case result1 of
             Nothing -> error ("Perhaps you are missing a comma. " ++ debug f l c)
             Just (x_list, rest1) ->
                 let 
                     result2 = parseUntil rest1  ","
-                in case result2 of 
+                in case result2 of
                     Nothing -> error ("Perhaps you are missing a comma. " ++ debug f l c)
                     Just (y_list, z_list) ->
-                        let 
+                        let
                             -- http://stackoverflow.com/questions/9220986/is-there-any-haskell-function-to-concatenate-list-with-separator
                             x = unwords (tokens_to_words x_list)
                             y = unwords (tokens_to_words y_list)
                             z = unwords (tokens_to_words z_list)
-                        in  Transform { transform_species=parseTransformSpecies species, transform_x=x, transform_y=y, transform_z=z}:(parseTransforms rest)
-parseTransforms ((name:f:l:c:[]):rest) = error ("Transform was not Parsed " ++ debug f l c)
+                        in
+                            (x, y, z, rest)
+parse3List ((name:f:l:c:[]):rest) = error ("List was not Parsed " ++ debug f l c)
 
+-- ["a+b",  ",",  "charles",  ] -> [a+b, charles]
+-- Tokens -> (list of expressions/names) -- Works on an entire list, not just a prefix.
+-- Forms a list of expressions by splitting the given list of tokens at commas and then joining them.
+-- the list of tokens should come preparsed without start and ending parentheses.
+parseExpressionList::[[String]] -> [Expression]
+parseExpressionList tokens = _parseList tokens ""
+
+-- tokens -> accumulator -> output list.
+_parseExpressionList::[[String]] -> String -> [Expression]
+-- Base Case and final joined string.
+_parseExpressionList [] accum = [accum]
+-- Seperation.
+_parseExpressionList ((",":_):rest) accum = accum:(_parseList rest "")
+-- Token joining and accumulation.
+_parseExpressionList (token:rest)   accum = _parseList rest (accum ++ token)
 
 -- Tokens_in -> Token searching for -> (tokens peeled off, tokens after searched for string.)
--- Currently, this returns all tokens if the given string is never found.
 parseUntil :: [[String]] -> String -> Maybe ([[String]], [[String]])
 parseUntil [] _ = Nothing
 parseUntil ((name:rt):rest) search
@@ -360,6 +442,43 @@ parseUntil ((name:rt):rest) search
             Nothing -> Nothing
             Just (tokens_before, tokens_after) ->
                 Just ((name:rt):tokens_before, tokens_after)
+
+-- Tokens_in -> (tokens peeled off, tokens starting with next definition)
+-- peels off tokens until it finds tokens of the form "name <<<, name <<, name ::, name() ::/<</<<</:::, name[
+-- This function allows us to Write OSKAR code like: foo(x, time) :: cos(time),
+-- without putting brakets around the functional expression, by inferring where the tokens end.
+parseUntilDefinition :: [[String]] -> ([[String]], [[String]])
+parseUntilDefinition tokens =
+    let (expression, rest, Done) = _parseUntilDefinition tokens
+    in (expression, rest)
+
+-- Searches for the definition syntax symbols,
+-- then moves back to exclude the definition name and potential arguments.
+-- ParseState types are used to communicate the state of the move back:
+--   Name -> We need to add the previous token as the name. |
+--   Left_Paren, Left_Curly -> We need to add tokens until we find a left bracket. | Done
+_parseUntilDefinition :: [[String]] -> ([[String]], [[String]], ParseState)
+_parseUntilDefinition [] = ([], [], Done) -- End of file is ok, we simply parse the entire expression.
+-- Thus far, expression will not contain curly braces.
+-- They may however contain parentheses, such as 'cos(t)',
+-- so we differentiate between expressions and argument lists based on a definition symbol.
+_parseUntilDefinition tokens@(("{",  _):rest)  = ([], tokens, Name) -- Stop at curly brace.
+_parseUntilDefinition tokens@(("<<",  _):rest) = ([], tokens, Name)
+_parseUntilDefinition tokens@(("<<<", _):rest) = ([], tokens, Name)
+_parseUntilDefinition tokens@(("::",  _):rest) = ([], tokens, Name)
+_parseUntilDefinition tokens@((":::", _):rest) = ([], tokens, Name)
+_parseUntilDefinition tokens@(ass_token@(token, _):rest)
+    | state == Done = (ass_token:out, rest, Done)  
+    | state == Name && token == ")" = ([], tokens, Left_Paren) -- We can just return tokens, since it will include prefix:rest.
+    | state == Name && token == "}" = ([], tokens, Left_Curly)
+    | state == Name = ([], tokens, Done)
+    -- Parsing Argument lists.
+    | state == Left_Paren && token /= "(" = ([], tokens, Left_Paren)
+    | state == Left_Curly && token /= "{" = ([], tokens, Left_Curly)
+    -- Transition back to name if we have found a left paren for an argument list.
+    | state == Left_Paren && token == "(" = ([], tokens, Name)
+    | state == Left_Curly && token == "{" = ([], tokens, Name)
+    where (out, rest, state) = _parseUntilDefinition rest
 
 -- Converts a list of tokens into a list of strings,
 -- In other words, this removes the file:line:column metadata.

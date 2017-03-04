@@ -28,6 +28,7 @@ TODO:
  - Upgrade compiler to OSKAR example spec v2.
  - comment my compiler code, so it is easier for readers to know what is going on.
  - Continue to detect and report more errors.
+ - 3 - 3 - 2017: Parse Picture functions.
 
 
  - Work on error detection when a user messes up the 
