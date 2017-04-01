@@ -6,6 +6,9 @@ This file was written by Bryce Summers for Larry Cuba on:
 1 - 22 - 2017.
 
 This file was inspired by a similar one written by Larry.
+
+If the interface is maintained, this generator may easily be substituted for one that targets a language other than OpenSCAD.
+For instance, OpenGL or WebGl could be targeted.
 """
 
 class Scene:
@@ -14,8 +17,12 @@ class Scene:
         self.filePath = ".\\"
         self.fileName = self.filePath + "\\output.scad"
 
+
+        # FIXME: Please renamed these to objects, instead of pictures.
+        # These data structures represent all of the generation objects.
+
         self.pictures = [] # List of Pictures, each of which specifies an OpenSCAD module.
-        self.current_picture = None
+        self.current_picture = None # The current object that this generator is specifying.
 
 
     def newPicture(self, name):
@@ -30,6 +37,14 @@ class Scene:
         self.current_picture = Picture(name)
         self.current_picture.make_draw_command()
         self.pictures.append(self.current_picture)
+
+    def newFunction(self, name):
+        self.finishLastPicture()
+        self.current_picture = Function(name)
+        self.pictures.append(self.current_picture)
+        return self.current_picture
+
+
 
     """
     Currently we implement picture generation by routing all
@@ -115,7 +130,7 @@ class Scene:
         file.write(fileText)
         file.close()
 
-
+# Pictures gradually build their OpenScad text as they are called through a genaricized interface.
 class Picture:
 
     def __init__(self, name_in):
@@ -204,3 +219,81 @@ class Picture:
     # this picture definition.
     def generateCode(self, output):
         output += self.text
+
+
+class Function:
+
+    def __init__(self, name_in):
+        self.myName = name_in
+
+        self.args = []        # Strin[]
+                              # A list of argument variable names.
+        self.expressions = [] # String[]
+                              # A list of evaluation expressions for every dimension.
+
+        self.scalar = False   # This stores whether this is a scalar function.
+        self.vector = False   # This stores whether this is a vector function.
+
+        self.transforms = []
+
+    # Return Types of functions.
+    def scalar_type(self):
+        self.scalar = True
+
+    def vector_type(self):
+        self.vector = True
+
+    # Names of inputs variables.
+    # String[] -> ()
+    def addArgument(self, arg):
+        self.args.append(arg)
+
+    # String ->
+    def addExpression(self, exp):
+        self.expressions.append(exp)
+
+    # Finishes this object.
+    def finish(self):
+        return
+
+    # Returns a string representing the OpenSCAD code for 
+    # this picture definition.
+    # ASSUMPTION: finish() has been called to finish this picture.
+    def generateCode(self, output):
+
+        # Code String, complete with line breaks.
+        out = ""
+
+        # 3 space and 6 space indents.
+        self.indent1 = "   "
+        self.indent2 = self.indent1*2
+
+
+        # Header.
+        out += "function "
+
+        # function name
+        out += self.myName + "("
+
+        # Arguments.
+        for i in range(0, len(self.args) - 1):
+            out += self.args[i] + ", "
+        out += self.args[len(self.args) - 1]
+        out += ") = \n"
+
+        out += self.indent1
+
+        # If this is a scalar function, then we are done.
+        if(self.scalar):
+            out += self.expressions[0] + ";"
+            return out
+
+        # Vector functions.
+        out += "["
+        for i in range (0, len(self.expressions) - 1):
+            out += self.expressions[i] + ", "
+        out += self.args[len(self.expressions) - 1]
+
+        out += "];\n"
+
+        output.append(out)

@@ -1,13 +1,13 @@
-#   The Translate vector can be simplified somewhat by defining the TY function 
-#       outside the picture.
-
 floor   <<  cube[{1}* (2,2,.02)         # 1. scale cube down to very thin slab on z-axis
                                         # and expand to twice size in x and y
                                         # to form background for other pics
                     + (-.5,-.5,-.05)    # 2. center in quadrant to form stage  
                 ]
 
-myTY1(x,time) :: cos((time*360)+(x*360))
+#   The Translate vector can be simplified somewhat by defining the TY function 
+#       outside the picture.
+
+myTY1(x,time) :: cos((time*360)+(x*360));
     
 cosine  <<  cube[{80}   * (.5,4,5)               # 1. scale cube to thin vertical slab
                         + (i, myTY1(i,$t), .05)  # 2. Now the TY parameter references the
@@ -20,4 +20,4 @@ cosine  <<  cube[{80}   * (.5,4,5)               # 1. scale cube to thin vertica
 #   The Draw command and resulting picture are the same:  Pic05.png
 
 #   The 400-frame animation in Pic06.gif                
-Draw { 0.,1.,400}[ floor, cosine ]      # $t goes from 0. to 1. in 400 frames
+Draw {400}[ floor, cosine ]      # $t goes from 0. to 1. in 400 frames

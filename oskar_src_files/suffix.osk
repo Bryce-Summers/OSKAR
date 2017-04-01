@@ -1,14 +1,3 @@
-#   The Translate vector can be simplified somewhat by defining the TY function 
-#       outside the picture.
-
-floor   <<  cube[{1}* (2,2,.02)         # 1. scale cube down to very thin slab on z-axis
-                                        # and expand to twice size in x and y
-                                        # to form background for other pics
-                    + (-.5,-.5,-.05)    # 2. center in quadrant to form stage  
-                ]
-
-myTY1(x,time) :: cos((time*360)+(x*360))
-    
 cosine  <<  cube[{80}   * (.5,4,5)               # 1. scale cube to thin vertical slab
                         + (i, myTY1(i,$t), .05)  # 2. Now the TY parameter references the
                                                  # myTY1 function, with 'i' and '$t' values for
