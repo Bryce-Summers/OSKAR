@@ -7,8 +7,7 @@ $vpt = [0, 0, 0];   // vpt system variable
 
 
 function myTY1(x, time) = 
-   [x];
-
+   cos((x*360)+(time*360));
 module floor()
 {
    Global_t = $t;
@@ -36,6 +35,7 @@ module cosine()
       scale([1, .5, 1])
       translate([i, myTY1 ( i, Global_t ) , .05])
       scale([.5, 4, 5])
+      scale([.0125, .02, .02])
       color([1, 1, 1, 1])
       cube();
    }

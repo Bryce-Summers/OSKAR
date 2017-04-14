@@ -2,7 +2,7 @@ import Data.Time
 
 main = do  
         --contents_io  <- readFile "../oskar_src_files/input.osk"
-        contents_io  <- readFile "../oskar_src_files/pic6.osk"
+        contents_io  <- readFile "../oskar_src_files/pic7.osk"
         timestamp_io <- getZonedTime
 
         -- Once we go into pure functional land, we no longer
@@ -266,7 +266,7 @@ _parseSyntaxTree (tokens@((name:_):("<<":_):rest)) pictures drawCommands funcs =
 
 -- Functions and picture functions. We recognize them by their "(" arguments"
 _parseSyntaxTree ((name:_):("(":rp):rest) pictures drawCommands funcs =
-    let (arguments, (def_symbol:_):rest1) = parseBraket (("(":rp):rest) "(" ")"
+    let (arguments, (def_symbol:f:l:c:[]):rest1) = parseBraket (("(":rp):rest) "(" ")"
     in case def_symbol of
         --"<<<" -> -- Picture Function / Picture FIXME: Not yet implemented.
         --"<<"  -> -- Picture Function / Picture
@@ -278,6 +278,8 @@ _parseSyntaxTree ((name:_):("(":rp):rest) pictures drawCommands funcs =
         ":::" -> -- Vector Valued Function Symbol.
             let (function, rest_of_tokens) = parseFunction name (parseExpressionList arguments) Vector rest1
             in _parseSyntaxTree rest_of_tokens pictures drawCommands funcs
+
+        _ -> error ("The following symbol is not understood: \"" ++ def_symbol ++"\" at " ++ debug f l c ++ " Maybe it is misplaced?")
 
 -- Handle Draw Command.
 _parseSyntaxTree tokens pictures drawCommands funcs =
@@ -679,8 +681,9 @@ _argsToString (arg:rest) = arg ++ ", " ++ (_argsToString rest)
         c_name = "p = scene.newFunction(\"" ++ name ++ "\")\n"
         c_args = _argsToCommands args
         c_exps = _expressionsToCommands expressions
+        c_type = _functionTypeToCommand ftype
     in
-        c_name ++ c_args ++ c_exps
+        c_name ++ c_args ++ c_exps ++ c_type
 
 
     -- FIXME: Add the rest of the function definition, determine how we will represent these functions in Python.
@@ -705,6 +708,10 @@ _expressionsToCommands (exp:rest) =
     let command = "p.addExpression(\"" ++ exp ++ "\")\n"
     in  command ++ (_expressionsToCommands rest)
 
+_functionTypeToCommand :: Function_Type -> String
+_functionTypeToCommand Scalar = "p.scalar_type()\n"
+_functionTypeToCommand Vector = "p.vector_type()\n"
+    
 
 {-
   Utility functions.

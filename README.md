@@ -49,6 +49,8 @@ TODO:
  - Continue to detect and report more errors.
  - 3 - 3 - 2017: Parse Picture functions.
 
+ - Detect potential uncommented lines, when non-special english words start showing up.
+
 -- FIXME: We may decide to just terminate scalar functions with a ';' character, it would be easier.
 parseUntilDefinition :: [[String]] -> ([[String]], [[String]])
 

@@ -28,7 +28,9 @@ floor 	<<	cube[{1}* (2,2,.02) 		# 1. scale cube down to very thin slab on z-axis
 					+ (-.5,-.5,-.05)	# 2. center in quadrant to form stage  
 				]
 
-cosine	<<	cube[{80}	* (.5,4,5) 		# 1. scale cube to thin vertical slab
+cosine	<<	cube[{80}	
+                        * (.0125, .02, .02)
+                        * (.5,4,5) 		# 1. scale cube to thin vertical slab
                         + (i,cos((i*360)+($t*360)),.05)  
                                         # 2. Translation Vector (TX,TY,TZ):
                                         # TX - spread out the 80 cubes between 0. and 1.

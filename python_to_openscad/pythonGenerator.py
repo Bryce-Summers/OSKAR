@@ -286,14 +286,16 @@ class Function:
         # If this is a scalar function, then we are done.
         if(self.scalar):
             out += self.expressions[0] + ";"
-            return out
+            output.append(out)
+            return
 
-        # Vector functions.
-        out += "["
-        for i in range (0, len(self.expressions) - 1):
-            out += self.expressions[i] + ", "
-        out += self.args[len(self.expressions) - 1]
-
-        out += "];\n"
-
-        output.append(out)
+        if(self.vector):
+            # Vector functions.
+            out += "["
+            for i in range (0, len(self.expressions) - 1):
+                out += self.expressions[i] + ", "
+            out += self.expressions[len(self.expressions) - 1]
+            out += "];\n"
+            
+            output.append(out)
+            return
