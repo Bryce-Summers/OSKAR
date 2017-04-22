@@ -128,8 +128,3 @@ wallpaper << MakeArray(cosine,4,4)	# 4x4 array of the previously defined cosine 
 wallpaper << MakeArray(cosine[@(0,0,45)],4,4)	# 4x4 array of the previously defined cosine picture
 
 #	now Draw wallpaper yields  Pic08.png
-
-
-
-
-

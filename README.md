@@ -48,8 +48,8 @@ TODO:
  - comment my compiler code, so it is easier for readers to know what is going on.
  - Continue to detect and report more errors.
  - 3 - 3 - 2017: Parse Picture functions.
-
  - Detect potential uncommented lines, when non-special english words start showing up.
+ - Check to see how 3-valued functions are to be used.
 
 -- FIXME: We may decide to just terminate scalar functions with a ';' character, it would be easier.
 parseUntilDefinition :: [[String]] -> ([[String]], [[String]])
@@ -57,3 +57,7 @@ parseUntilDefinition :: [[String]] -> ([[String]], [[String]])
 
  - Work on error detection when a user messes up the 
  picture[][][] syntax.
+
+
+ #log
+ 4.21.2017: I was glad to find that the compiler caught a missing right ']' bracket for me.

@@ -1,14 +1,3 @@
-floor   <<  cube[{1}* (2,2,.02)         # 1. scale cube down to very thin slab on z-axis
-                                        # and expand to twice size in x and y
-                                        # to form background for other pics
-                    + (-.5,-.5,-.05)    # 2. center in quadrant to form stage  
-                ]
-
-#   The Translate vector can be simplified somewhat by defining the TY function 
-#       outside the picture.
-
-myTY1(x,time) :: cos((x*360)+(time*360));
-
 #   3-Valued Vectors 
 #   It might be useful to have functions that return a 3-valued vector that can be
 #       used anywhere a vector is expected. perhaps with another operator, ":::" .
@@ -32,13 +21,13 @@ funplot(TYfunction) <<< cube[{80}   * (.0125, .02, .02)             # 1. scale c
                                                                     #     the argument to the picture_function.
                                     * (1,.5,1)      # 3. Halve the height of the curve from 2.0 to 1.0
                                     + (0,.5,0)      # 4. Move the curve up .5 to center in 1st quadrant.
-                ]
+                            ]
 cosine  <<  funplot(myTY1)  # now the 'cosine' picture can be defined as a 'funplot'
                             # with "myTY1" as the function to be plotted.
     
 # For more flexibility, numpix could be made an argument too, in which case the 
 # first line of the definition would be:
-funplot(TYfunction, numpix) <<< cube[{numpix} * (.5,4,5)
+funplot(TYfunction, numpix) <<< cube[{numpix} * (.5,4,5)]
  
 #   And the call would become:
 cosine  <<  funplot(myTY1, 100)  # 'cosine' is the function, myTY1 plotted with 100 cubes.
@@ -55,8 +44,8 @@ MakeArray(base=cube, rows=4, cols=2) <<< base[{numpix}
                                                0)              # tz = no change; 2D pattern
                                           ]
 
-# 4x4 array of the previously defined cosine picture
-wallpaper << MakeArray(cosine,4,4)
+# 4x4 array of the previously defined cosine picture.
+wallpaper << MakeArray(cosine, 4, 4)
 
 # Draw wallpaper yields  Pic07.png
 Draw {400}[wallpaper]  # $t goes from 0. to 1. in 400 frames.
