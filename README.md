@@ -61,3 +61,7 @@ parseUntilDefinition :: [[String]] -> ([[String]], [[String]])
 
  #log
  4.21.2017: I was glad to find that the compiler caught a missing right ']' bracket for me.
+
+ 5.15.2017: 
+  - I'm not sure if I should allow variable names in the iteration counts. {80} is fine, by {numpix} is not currently supported.
+  - I'm allowing scaling by scalars via *(s), which no longer requires 3 entries.

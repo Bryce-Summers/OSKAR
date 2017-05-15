@@ -1,0 +1,5 @@
+# TODO
+
+--1. Allow iteration counts to be strings.
+--2. Add .arguments command when generating picture functions.
+--3. Translate << lines into python.

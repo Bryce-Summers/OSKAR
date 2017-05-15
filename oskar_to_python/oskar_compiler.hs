@@ -1,4 +1,5 @@
 import Data.Time
+import Text.Read
 
 main = do  
         --contents_io  <- readFile "../oskar_src_files/input.osk"
@@ -224,9 +225,10 @@ data Function_Type = Scalar | Vector
 -- This is sufficiently general enough that I can continue to use this if we go to higher dimensions.
 type Expression = String
 
+-- We use Strings for everything to ensure that variable names may be accomodated.
 data Iteration = Iteration { iteration_variable :: String -- The iteration variable. e.g. 'i', 'j', etc.
-                            ,iteration_begin :: Int       -- The iteration this variable will start at.
-                            ,iteration_end   :: Int       -- The iteration this variable will end before.
+                            ,iteration_begin :: String    -- The iteration this variable will start at.
+                            ,iteration_end   :: String    -- The iteration this variable will end before.
                            }                              -- for variable = begin; variable < end; variable++
 
 data DrawCommand =  DrawCommand { drawCommand_iterations  :: Iteration
@@ -281,6 +283,7 @@ _parseSyntaxTree ((name:_):("(":rp):rest) pictures drawCommands funcs =
     in case def_symbol of
          -- Picture Function / Picture.
         "<<<" ->
+            --error ("Picture functions are not yet supported: \"" ++ def_symbol ++"\" at " ++ debug f l c ++ " Maybe it is misplaced?")
             let (picture, rest_of_tokens) = parsePicture name (parseExpressionList arguments) rest1
             in  _parseSyntaxTree rest_of_tokens (picture ++ pictures) drawCommands funcs
 
@@ -431,11 +434,19 @@ tokensToExpression ((str:_):rest) = str ++ (tokensToExpression rest)
 -- Tokens in -> (Iteration, The rest of the tokens.)
 parseIterations :: [[String]] -> (Iteration, [[String]])
 -- {i:80}
-parseIterations (("{":_):(variable_name:_):(":":_):(iteration_count:_):("}":_):rest) = 
-    (Iteration {iteration_variable=variable_name, iteration_begin=0, iteration_end=(readInt iteration_count)}, rest)
+parseIterations (("{":_):(variable_name:_):(":":_):(iteration_count_str:f:l:c:[]):("}":_):rest) = 
+    --let result = readMaybe iteration_count_str
+    --in case result of
+    --  Nothing -> error ("Iteration count in variable name was not an integer. Note: variable names are not currently supported." ++ debug f l c)
+    --  Just iteration_count ->
+         (Iteration {iteration_variable=variable_name, iteration_begin="0", iteration_end=(iteration_count_str)}, rest)
 -- {80}
-parseIterations (("{":_):(iteration_count:_):("}":_):rest) =
-    (Iteration {iteration_variable="i", iteration_begin=0, iteration_end=(readInt iteration_count)}, rest)
+parseIterations (("{":_):(iteration_count_str:f:l:c:[]):("}":_):rest) =
+    --let result = readMaybe iteration_count_str
+    --in case result of
+    --  Nothing -> error ("Iteration count in variable name was not an integer. Note: variable names are not currently supported." ++ debug f l c)
+    --  Just iteration_count ->
+            (Iteration {iteration_variable="i", iteration_begin="0", iteration_end=iteration_count_str}, rest)
 parseIterations ((str:f:l:c:[]):rest) = error ("Iteration Parse Error on token \"" ++ str ++ "\" at " ++ debug f l c)
 
 -- Converts a list of tokens into a list of transforms.
@@ -457,9 +468,12 @@ parse3List ((syb:rb):tokens) left_p right_p =
         result1  = parseUntil tokens1 ","
         f:l:c:[] = rb
         in case result1 of
-            Nothing -> error ("Perhaps you are missing a comma. " ++ debug f l c)
+            Nothing -> --error ("Perhaps you are missing a comma. " ++ debug f l c)
+                -- If there is no comma, then it is a scalar and we put it into all 3 channels.
+                let scalar = unwords (tokens_to_words tokens1)
+                in (scalar, scalar, scalar, rest)
             Just (x_list, rest1) ->
-                let 
+                let
                     result2 = parseUntil rest1  ","
                 in case result2 of
                     Nothing -> error ("Perhaps you are missing a comma. " ++ debug f l c)
@@ -574,7 +588,7 @@ parseDrawCommand ((name:_):("{":rb):rest) =
         (pictures, rest2)  = parseBraket rest1 "[" "]"
     in  (Just DrawCommand { drawCommand_iterations=iteration, drawCommand_pictures=tokens_to_words pictures}, rest2)
 parseDrawCommand ((name:_):("[":rb):rest) =
-    let iteration = Iteration { iteration_variable = "i", iteration_begin=0, iteration_end=1}
+    let iteration = Iteration { iteration_variable = "i", iteration_begin="0", iteration_end="1"}
         (pictures, rest1)  = parseBraket (("[":rb):rest) "[" "]"
     in  (Just DrawCommand { drawCommand_iterations=iteration, drawCommand_pictures=tokens_to_words pictures}, rest1)
 -- No DrawCommand is present here.
@@ -590,7 +604,7 @@ generatePython AST {ast_pictures=pictures, ast_drawings=drawCommands, ast_functi
     let footer = "\n# Generate Code in a Render Language\nscene.generateCode()":[]
         accum1 = generateList drawCommands generateDrawCommand footer
         accum2 = generateList pictures     generatePicture ("":accum1)
-        accum3 = generateList functions    generateFunction(("# " ++(show (length(functions)))++ " functions parsed."):accum2)
+        accum3 = generateList functions    generateFunction(("# " ++(show (length(functions)))++ " functions parsed.\n"):accum2)
     in  header :
         "from pythonGenerator import *\n":
         "# Global Variables\n" :
@@ -609,6 +623,7 @@ generateList [] _ accum = accum
 
 generatePicture :: Picture -> String
 generatePicture Picture { picture_name       = name
+                         ,picture_arguments  = args
                          ,picture_basis      = basis
                          ,picture_transforms = transforms
                          ,picture_iterations = iterations
@@ -618,6 +633,7 @@ generatePicture Picture { picture_name       = name
                     "# Picture definition for " ++ name ++ "\n" ++
                     --"def " ++ name ++ "():\n" ++
                     "scene.newPicture(\"" ++ name ++ "\")\n" ++
+                    generateArguments args ++
                     generateIteration iterations "   " ++
                     --indent ++ "pushState()\n" ++
 
@@ -631,8 +647,17 @@ generatePicture Picture { picture_name       = name
                     "\n"
 generatePicture (Direct_Picture(name, expression)) =
     --error("Bryce should fix this soon: name = " ++ name ++ ", expression = " ++ expression)
-    name ++ " << " ++ expression ++ "\n"
-    -- name ++ "<<" ++ expression
+    "# Picture via reduction for " ++ name ++ "\n" ++
+    "scene.newDirectPicture(\"" ++ name ++ "\")\n" ++
+    "scene.expression(\""  ++ expression ++ "\")\n"
+    -- FIXME: Add arguments if necessary some day.
+    -- "scene.addArgument(\""  ++ expression ++ "\")\n"
+    
+
+generateArguments :: [String] -> String
+generateArguments [] = ""
+generateArguments (str:rest) = "scene.addArgument(\"" ++ str ++ "\")\n" ++
+    generateArguments rest
 
 -- Iteration to be generated -> indentation string -> output.
 generateIteration :: Iteration -> String -> String
@@ -760,6 +785,9 @@ _functionTypeToCommand Vector = "p.vector_type()\n"
 -- alternately, main = print . map readInt . words =<< readFile "test.txt"
 readInt :: String -> Int
 readInt = read
+
+readIntMaybe :: String -> Maybe Int
+readIntMaybe = readMaybe
 
 error_str :: String -> String
 error_str str = "!!! ERROR: " ++ str ++ " !!!\n"

@@ -29,7 +29,16 @@ class Scene:
 
         self.finishLastPicture()       
         self.current_picture = Picture(name)
+        self.current_picture.make_normal_picture()
         self.pictures.append(self.current_picture)
+
+    def newDirectPicture(self, name):
+
+        self.finishLastPicture()       
+        self.current_picture = Picture(name)
+        self.current_picture.make_direct_picture()
+        self.pictures.append(self.current_picture)
+
 
     def newDrawCommand(self, name):
         
@@ -50,6 +59,8 @@ class Scene:
     Currently we implement picture generation by routing all
     of these calls to the latest picture.
     """
+    def addArgument(self, arg):
+        self.current_picture.addArgument(arg)
 
     # string, int, int
     # for(int var = begin; var < end; var++)
@@ -76,6 +87,9 @@ class Scene:
 
     def color(self, r, g, b, a):
         self.current_picture.color(r, g, b, a)
+
+    def expression(self, txt):
+        self.current_picture.expression(txt)
 
 
     # Complete the definition for the last picture that was defined.
@@ -136,7 +150,13 @@ class Picture:
     def __init__(self, name_in):
         self.text = []
         self.myName = name_in
-        self.name(name_in)
+
+        self.name_created = False
+
+        # Name is set later, when we have the full list of arguments.
+        #self.name(name_in)
+
+        self.arguments = []
 
         # We keep a list of transforms, because OpenSCAD insists on
         # having their transforms specified in funky reverse order.
@@ -146,14 +166,35 @@ class Picture:
         self.indent1 = "   "
         self.indent2 = self.indent1*2
 
-        self.isDrawCommand = False
+        self.isDrawCommand   = False
+        self.isNormalPicture = False
+        self.isDirectPicture = False # Picture Reduction.
+
+    def make_normal_picture(self):
+        self.isNormalPicture = True
 
     def make_draw_command(self):
-        self.isDrawCommand = True;
+        self.isDrawCommand = True
 
-    def name(self, name):
-        self.text.append("module " + name + "()")
+    def make_direct_picture(self):
+        self.isDirectPicture = True
+
+    def name(self, name, arguments):
+
+        str = "module " + name + "("
+
+        for i in range(len(arguments) - 1):
+            str += arguments[i] + ", "
+        if len(arguments) > 0:
+            str += arguments[len(arguments) - 1]
+        str += ")"
+
+        self.text.append(str)
         self.text.append("{")
+
+    # add an arugment name.
+    def addArgument(self, arg):
+        self.arguments.append(arg)
 
     def getName(self):
         return self.myName
@@ -162,12 +203,14 @@ class Picture:
     # for(int var = begin; var < end; var++)
     def iterations(self, var, begin, end):
 
+        self.name(self.myName, self.arguments)
+
         # Openscad does not support programmatic time specification.
         if self.isDrawCommand:
             return
 
         # Assuming we always go from 0 to 1 with end steps...
-        step = 1.0 / end
+        #step = 1.0 / end # As of 5.15.17, we no longer do this and we use strings now.
 
         self.text.append(self.indent1 + "Global_t = $t;")
         #self.text.append(self.indent1 + "begin = 0;")
@@ -178,6 +221,11 @@ class Picture:
         self.text.append(self.indent1 + "for (" + var + "=[0:step_size:1])")
         self.text.append(self.indent1 + "{")
 
+    def expression(self, txt):
+        # Create the header if it doesn't yet exist.
+        if not self.name_created:
+            self.name(self.myName, self.arguments)
+        self.text.append(txt + ";")
 
     # string, string, string
     def scaling(self, sx, sy, sz):
@@ -211,7 +259,8 @@ class Picture:
             self.text.append(self.transforms.pop())
 
     def finish(self):
-        if not self.isDrawCommand:
+        # Closing brace for end of iteration loop in normal picture definitions.
+        if self.isNormalPicture:
             self.text.append(self.indent1 + "}")
         self.text.append("}\n")
 

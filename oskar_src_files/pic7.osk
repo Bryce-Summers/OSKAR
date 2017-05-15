@@ -1,3 +1,12 @@
+# This file demonstrates many new features, such as picture functions, functions, etc.
+
+
+
+#   The Translate vector can be simplified somewhat by defining the TY function 
+#       outside the picture.
+
+myTY1(x,time) :: cos((x*360)+(time*360));
+
 #   3-Valued Vectors 
 #   It might be useful to have functions that return a 3-valued vector that can be
 #       used anywhere a vector is expected. perhaps with another operator, ":::" .
@@ -37,7 +46,7 @@ cosine  <<  funplot(myTY1, 100)  # 'cosine' is the function, myTY1 plotted with 
 # and creates a 2-dimensional array like a wallpaper pattern.  The picture_function
 # depends on the "modulo" and "step" functions to create the array.
     
-MakeArray(base=cube, rows=4, cols=2) <<< base[{numpix}
+MakeArray(base=cube, rows=4, cols=2) <<< base[{80}
                                             * (1/(rows*cols))  # scale factor 1/(rows*cols)
                                             + (modulo(i,cols), # tx = modulo function
                                                step(i,rows),   # ty = step function

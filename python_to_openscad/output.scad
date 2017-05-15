@@ -8,22 +8,7 @@ $vpt = [0, 0, 0];   // vpt system variable
 
 function myTY1(x, time) = 
    cos((x*360)+(time*360));
-module floor()
-{
-   Global_t = $t;
-   steps = 1;
-   step_size = 1.0/steps;
-   // Iteration from 0 to 1 in 1 equal steps.
-   for (i=[0:step_size:1])
-   {
-      translate([-.5, -.5, -.05])
-      scale([2, 2, .02])
-      color([1, 1, 1, 1])
-      cube();
-   }
-}
-
-module cosine()
+module funplot(TYfunction)
 {
    Global_t = $t;
    steps = 80;
@@ -33,7 +18,7 @@ module cosine()
    {
       translate([0, .5, 0])
       scale([1, .5, 1])
-      translate([i, myTY1 ( i, Global_t ) , .05])
+      translate([i, TYfunction ( i, Global_t ) , .05])
       scale([.5, 4, 5])
       scale([.0125, .02, .02])
       color([1, 1, 1, 1])
@@ -41,10 +26,53 @@ module cosine()
    }
 }
 
+module cosine()
+{
+funplot(myTY1);
+}
+
+module funplot(TYfunction, numpix)
+{
+   Global_t = $t;
+   steps = numpix;
+   step_size = 1.0/steps;
+   // Iteration from 0 to 1 in numpix equal steps.
+   for (i=[0:step_size:1])
+   {
+      scale([.5, 4, 5])
+      color([1, 1, 1, 1])
+      cube();
+   }
+}
+
+module cosine()
+{
+funplot(myTY1,100);
+}
+
+module MakeArray(base=cube, rows=4, cols=2)
+{
+   Global_t = $t;
+   steps = 80;
+   step_size = 1.0/steps;
+   // Iteration from 0 to 1 in 80 equal steps.
+   for (i=[0:step_size:1])
+   {
+      translate([modulo ( i, cols ), step ( i , rows ) , 0])
+      scale([1 / ( rows * cols ), 1 / ( rows * cols ), 1 / ( rows * cols )])
+      color([1, 1, 1, 1])
+      base();
+   }
+}
+
+module wallpaper()
+{
+MakeArray(cosine,4,4);
+}
+
 module draw()
 {
-      floor();
-      cosine();
+   wallpaper();
 }
 
 // Draw the root module.
