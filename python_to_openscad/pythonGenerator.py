@@ -348,3 +348,137 @@ class Function:
             
             output.append(out)
             return
+
+
+"""
+Macrosubstitution code.
+Written by Bryce Summers beginning on May.15.217
+
+This code is necessary for getting around Open Scad's non-support for 1st class functions.
+"""
+
+class SubstitutableText:
+
+    # String, String[], String.
+    # name of function,
+    # names of local variables passed into the function.
+    # Textual body that makes up the original function in a file.
+    # If a language allows 1st class functions, the body would be the final
+    # form of the function.
+    # In lanauges without 1st class functions, like Openscad,
+    # we will perform macrosubstitution on this body.
+    def __init__(self, name, arguments, body):
+
+    # Returns a Substitutable text object equivalent to
+    # replacing the body substituting
+    # the find string for the replace string.
+    def macroSubstitute(self, find, replace):
+
+    # Used at the end to retrieve the body, which may be written out to a file.
+    def getBody(self):
+        return self.body
+
+    # If the other substitution text's body contains a reference to
+    # this substitution text...
+    # returns the index of the '('.
+    # returns -1 if not found.
+    def isInsideOtherSubtext(self, other):
+        str = other.getBody()
+
+        # Returns True if the name is found, it is followed by a '('
+        # and preceded by a space or the beginning of string.
+        if str.contains(self.myName) # FIXME: Add two other conditions.
+            return True
+
+class MacroSubstitutor:
+
+    def __init__(self):
+
+        self.functions = []
+
+
+        self.func_name_set
+
+    def addSubstitutionText(self, subText):
+        subbed_funcs = [subText]
+
+        # Using a Trampoline, macrosubstitute all function calls down the entire necessary call chain.
+        while(len(subbed_funcs) > 0):
+            func = subbed_funcs.pop()
+            new_funcs = self.addSubstitutionText_helper(func)
+            for new_func in new_funcs
+                subbed_funcs.append(new_funcs)
+
+    # Called every time a new function is created.
+    def addSubstitutionText_helper(self, subText):
+
+        subbed_funcs = []
+
+
+        for func in self.functions
+            leftP_index = func.isInsideOtherSubtext(subText)
+            if leftP_index < 0
+                continue
+
+            # At this point,
+            # the new substitution text contains a reference call to 'func'
+            # We need to check its arguments and if one of them is a function name,
+            # we apply macrosubstitution.
+            # FIXME: What about local variables?
+            args = parseArguments(subText.getBody(), leftP_index)
+
+            func_name = func.getName()
+
+            # We will map certain arguments to func to the new function names,
+            # then we will delete them.
+            #
+            # For Example:
+            # func:  g(f, x) = f(x)
+            #
+            # h: h(x) = x + 2
+            # subText: foo = g(h, 5)
+            #
+            # Generated Macrosubstituted function:
+            # g_h(x) = h(x)
+            # Altered definition of foo:
+            # foo = g_h(5)
+            indices = []
+            substituted_names = []
+
+            for var_name in args:
+                if var_name in func_name_set:
+
+            subbed_func = macrosubstitute(func, mapping)
+            subbed_funcs.append(subbed_func)
+
+            # modify the calling function in preparation for the next
+            # iteration of the loop and the potential for more
+            # substitutions.
+            modifySubbedCallingFuntion(subText, mapping)
+
+
+
+        # Recursively, or trampoline substituted down the function calling chain.
+        # Perhaps do this in a calling function by making this a helper function.
+        # We need to continue substituting the rest of the function references for
+        # this sub function by continuing on with the loop.
+        self.addSubstitutionText(subbed_func)
+
+
+
+    # String, Integer --> returns a list of argument names.
+    def parseArguments(self, body, leftP_index):
+
+        # Parse from '(' to ')', then separate arguments by ',' after removing ' ' spaces.
+
+    # SubstitutionText Object, mapping datastructure (TBD)
+    # function naming is name_1stPassedFuncName_2ndPassedFuncName_3rdPassedFuncName_etc
+    # This will be consistent across macrosubstitution calls, because of the determined
+    # order of arguments. If the same functions are passed as arguments to the same
+    # macrosubstitution functor, then they will produce the same named macrosubstituted function,
+    # which means that we might want to store a set of all names, to avoid naming conflicts
+    # and route identical functor evaluations to the same strings to avoid combinatorial explosion.
+    def macrosubstitute(self, func, mapping):
+
+    # Modify the calling function by removing function variable passed values.
+    def modifySubbedCallingFuntion(subText, mapping):

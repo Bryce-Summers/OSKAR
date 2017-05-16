@@ -8,6 +8,7 @@ $vpt = [0, 0, 0];   // vpt system variable
 
 function myTY1(x, time) = 
    cos((x*360)+(time*360));
+   
 module funplot(TYfunction)
 {
    Global_t = $t;
@@ -18,7 +19,7 @@ module funplot(TYfunction)
    {
       translate([0, .5, 0])
       scale([1, .5, 1])
-      translate([i, TYfunction ( i, Global_t ) , .05])
+      translate([i, myTY1 ( i, Global_t ) , .05])
       scale([.5, 4, 5])
       scale([.0125, .02, .02])
       color([1, 1, 1, 1])
@@ -31,6 +32,7 @@ module cosine()
 funplot(myTY1);
 }
 
+/*
 module funplot(TYfunction, numpix)
 {
    Global_t = $t;
@@ -44,6 +46,7 @@ module funplot(TYfunction, numpix)
       cube();
    }
 }
+*/
 
 module cosine()
 {
@@ -72,7 +75,8 @@ MakeArray(cosine,4,4);
 
 module draw()
 {
-   wallpaper();
+   //wallpaper();
+   cosine();
 }
 
 // Draw the root module.
