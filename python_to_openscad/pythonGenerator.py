@@ -368,15 +368,50 @@ class SubstitutableText:
     # In lanauges without 1st class functions, like Openscad,
     # we will perform macrosubstitution on this body.
     def __init__(self, name, arguments, body):
+        self.myName = name
+        self.myArgs = arguments
+        self.myText = body
+
+    def getName(self):
+        return self.myName
+
+    def getArgs(self):
+        return self.myArgs
+
+    # Used at the end to retrieve the body, which may be written out to a file.
+    def getBody(self):
+        return self.myBody
 
     # Returns a Substitutable text object equivalent to
     # replacing the body substituting
     # the find string for the replace string.
-    def macroSubstitute(self, find, replace):
+    # The inputs are two index associated lists that
+    # allow for several macrosubstitutions to be done at once.
+    # String[], String[]
+    def macroSubstitute(self, finds, replaces):
 
-    # Used at the end to retrieve the body, which may be written out to a file.
-    def getBody(self):
-        return self.body
+        # The name is constructed by adding the macrosubstituted argument underscored in.
+        name = self.getName()
+        for str in replaces:
+            name = name + "_" + str
+
+        # Construct the argument list, minus the arguments that are to be
+        # directly macrosubstituted into the text.
+        old_args = self.getArgs()
+        finds_set = set(finds)
+        new_args = []
+        for arg in old_args
+            if arg not in finds_set
+                new_args.append(arg)
+
+        # Create the new body by replacing all instances of find with replace.
+        new_body = self.getBody()
+        for index in range(len(finds))
+            find_str    = finds[index]
+            replace_str = replaces[index]
+            new_body    = new_body.replace(find_str, replace_str)
+
+        return SubstitutableText(name, new_args, new_body)
 
     # If the other substitution text's body contains a reference to
     # this substitution text...
@@ -387,22 +422,36 @@ class SubstitutableText:
 
         # Returns True if the name is found, it is followed by a '('
         # and preceded by a space or the beginning of string.
-        if str.contains(self.myName) # FIXME: Add two other conditions.
-            return True
+        name_index = str.find(self.myName)
+        end_index = name_index + len(self.myName)
+
+        name_found = (name_index > -1)
+
+        if not name_found
+            return -1
+
+        followed_by_leftp = (str[end_index] == ')')
+        preceded_by_space = name_index == 0 or str[name_index - 1] == ' '
+
+        if name_found and followed_by_leftp and preceded_by_space
+            return name_index
+
+        # function name not found.
+        return -1
 
 class MacroSubstitutor:
 
     def __init__(self):
 
         self.functions = []
+        self.func_name_set = set()
 
-
-        self.func_name_set
-
+    # Using a Trampoline, macrosubstitute all function calls
+    # down the entire necessary call chain.
     def addSubstitutionText(self, subText):
         subbed_funcs = [subText]
 
-        # Using a Trampoline, macrosubstitute all function calls down the entire necessary call chain.
+        # Trampoline.
         while(len(subbed_funcs) > 0):
             func = subbed_funcs.pop()
             new_funcs = self.addSubstitutionText_helper(func)
@@ -413,7 +462,6 @@ class MacroSubstitutor:
     def addSubstitutionText_helper(self, subText):
 
         subbed_funcs = []
-
 
         for func in self.functions
             leftP_index = func.isInsideOtherSubtext(subText)
@@ -427,6 +475,7 @@ class MacroSubstitutor:
             # FIXME: What about local variables?
             args = parseArguments(subText.getBody(), leftP_index)
 
+            # Pre-existing candidate function that may need to be macro-replaced.
             func_name = func.getName()
 
             # We will map certain arguments to func to the new function names,
@@ -442,11 +491,27 @@ class MacroSubstitutor:
             # g_h(x) = h(x)
             # Altered definition of foo:
             # foo = g_h(5)
-            indices = []
-            substituted_names = []
+            finds    = []
+            replaces = []
+
+
+
+
+
+            # We need the indices, because we know the replaced value in the calling, but not
+            # the local variable in the called function. Instead we know the index.
+            # We'll need to look up an array of the arguments in the called function
+            # or pass indices to the SubstitutableText objects.
+
+
+
+
+            # FIXME: Do we want a mapping object or just immediately separate things into
+            # finds[] and replaces[]
 
             for var_name in args:
-                if var_name in func_name_set:
+                if var_name in self.func_name_set:
+                    finds.append()
 
             subbed_func = macrosubstitute(func, mapping)
             subbed_funcs.append(subbed_func)
@@ -456,20 +521,42 @@ class MacroSubstitutor:
             # substitutions.
             modifySubbedCallingFuntion(subText, mapping)
 
-
-
-        # Recursively, or trampoline substituted down the function calling chain.
-        # Perhaps do this in a calling function by making this a helper function.
-        # We need to continue substituting the rest of the function references for
-        # this sub function by continuing on with the loop.
-        self.addSubstitutionText(subbed_func)
-
+        # The subbed functions are then macrosubstituted via the trampoline
+        # in self.addSubstitutionText()
+        return subbed_funcs
 
 
     # String, Integer --> returns a list of argument names.
+    # Text to be parsed, index of original left parens.
     def parseArguments(self, body, leftP_index):
-
+        output = []
         # Parse from '(' to ')', then separate arguments by ',' after removing ' ' spaces.
+        in_count = 1
+
+        # Index of first character after the first '('
+        index = leftP_index
+        arg_start_index = index + 1
+        while(in_count > 0):
+            index++
+
+            char = body[index]
+            if char == '(':
+                in_count++
+                continue
+            elif char == ')':
+                in_count--
+
+            if char == ',' or char == ')':
+                # [inclusive, exclusive)
+                arg_str = body[arg_start_index:index]
+                output.append(arg_str)
+                arg_start_index = index + 1
+
+        return output
+
+
+
+
 
     # SubstitutionText Object, mapping datastructure (TBD)
     # function naming is name_1stPassedFuncName_2ndPassedFuncName_3rdPassedFuncName_etc
@@ -478,7 +565,26 @@ class MacroSubstitutor:
     # macrosubstitution functor, then they will produce the same named macrosubstituted function,
     # which means that we might want to store a set of all names, to avoid naming conflicts
     # and route identical functor evaluations to the same strings to avoid combinatorial explosion.
+    # We also might need to worry about user inputs of names like foo_bar, if there is also
+    # a function called foo, where the user passes in bar.
     def macrosubstitute(self, func, mapping):
 
     # Modify the calling function by removing function variable passed values.
     def modifySubbedCallingFuntion(subText, mapping):
+
+
+
+    def unit_tests():
+        str = 'foo(a, bb, ccc, dd, e)'
+
+        args = self.parseArguments(str, 3)
+
+        assert(len(args) == 5)
+        assert(args[0] == "a")
+        assert(args[1] == "bb")
+        assert(args[2] == "ccc")
+        assert(args[3] == "dd")
+        assert(args[4] == "e")
+
+macro = new MacroSubstitutor()
+macro.unit_tests()
