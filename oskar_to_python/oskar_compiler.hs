@@ -460,12 +460,13 @@ parseTransforms ((species:_):tokens) =
 -- if left_p = "[" and right_p = "]"
 -- Tokens -> (x, y, z, rest_of_tokens)
 -- Tokens -> left_p -> right_p -> (x, y, z, rest_of_tokens)
+-- (a, (b,c), d) --> a  (b,c)  d    --notice that the comma nested inside of parens should be ignored and not used in a split.
 parse3List:: [[String]] -> String -> String -> (String, String, String, [[String]])
 parse3List [] left_p right_p = error ("0 - dimensional list. 3D list expected.") -- this shouldn't really happen, this would be an erroneous call.
 parse3List ((syb:rb):tokens) left_p right_p =
     let left_p == syb = True
         (tokens1, rest)  = parseBraket ((left_p:rb):tokens) left_p right_p
-        result1  = parseUntil tokens1 ","
+        result1  = parseUntilAtCurrentScope tokens1 "," left_p right_p
         f:l:c:[] = rb
         in case result1 of
             Nothing -> --error ("Perhaps you are missing a comma. " ++ debug f l c)
@@ -474,7 +475,7 @@ parse3List ((syb:rb):tokens) left_p right_p =
                 in (scalar, scalar, scalar, rest)
             Just (x_list, rest1) ->
                 let
-                    result2 = parseUntil rest1  ","
+                    result2 = parseUntilAtCurrentScope rest1  "," left_p right_p
                 in case result2 of
                     Nothing -> error ("Perhaps you are missing a comma. " ++ debug f l c)
                     Just (y_list, z_list) ->
@@ -514,6 +515,31 @@ parseUntil ((name:rt):rest) search
             Nothing -> Nothing
             Just (tokens_before, tokens_after) ->
                 Just ((name:rt):tokens_before, tokens_after)
+
+-- tokens -> token searched for -> left_p nesting start -> right_p nesting end -> output of tokens before and after the search.
+parseUntilAtCurrentScope :: [[String]] -> String -> String -> String -> Maybe ([[String]], [[String]])
+parseUntilAtCurrentScope tokens search left_p right_p =
+    parseUntilAtCurrentScopeH tokens search left_p right_p 0
+
+-- same, but with scope tracking variable.
+parseUntilAtCurrentScopeH :: [[String]] -> String -> String -> String -> Int -> Maybe ([[String]], [[String]])
+parseUntilAtCurrentScopeH [] _ _ _ _ = Nothing
+parseUntilAtCurrentScopeH ((name:rt):rest) search left_p right_p scope
+    -- If we are at the original scope and see the searched for value, then we are done.
+    | (name == search) && (scope == 0) = Just ([], rest) -- If the name of the token matches the searched for name, we have found our partition.
+    -- Otherwise, we determine the new scope variable, make a recursive call, then combine it.
+    | (name /= search) || (scope /= 0) =
+        let newScope =
+                -- https://stackoverflow.com/questions/3479116/pattern-matching-variables-in-a-case-statement-in-haskell
+                case () of 
+                  ()| name == left_p  -> scope - 1
+                    | name == right_p -> scope + 1
+                    | otherwise       -> scope
+            result = parseUntilAtCurrentScopeH rest search left_p right_p newScope
+            in case result of
+                Nothing -> Nothing
+                Just (tokens_before, tokens_after) ->
+                    Just ((name:rt):tokens_before, tokens_after)
 
 -- Tokens_in -> (tokens peeled off, tokens starting with next definition)
 -- peels off tokens until it finds tokens of the form "name <<<, name <<, name ::, name() ::/<</<<</:::, name[
