@@ -155,8 +155,9 @@ class Scene:
             ["function modulo(dividend, divisor) =",
              "   dividend % divisor;",
              "",
-             "function step(dividend, divisor) = ",
-             "   floor(dividend, divisor);",
+             "// return 0, divisor, 2*divisor, etc based on which interval x is in.",
+             "function step(x, divisor) = ",
+             "    floor(x/divisor)*divisor;",
              ""]))
 
 

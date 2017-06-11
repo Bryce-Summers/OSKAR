@@ -605,6 +605,7 @@ parseTransformSpecies :: String -> Transform_Species
 parseTransformSpecies "*" = Scale
 parseTransformSpecies "+" = Translate
 parseTransformSpecies "@" = Rotate
+parseTransformSpecies other = error ("ERROR: parseTransformSpecies, the token: \"" ++ other ++ "\" was not understood.")
 
 
 -- Parses the front of a list of tokens
