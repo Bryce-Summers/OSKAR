@@ -1,0 +1,75 @@
+# This file demonstrates many new features, such as picture functions, functions, etc.
+# Written by Larry Cuba.
+# Edited  by Bryce Summers.
+
+floor   <<  cube[{1}* (2,2,.02)         # 1. scale cube down to very thin slab on z-axis
+                                        # and expand to twice size in x and y
+                                        # to form background for other pics
+                    + (-.5,-.5,-.05)    # 2. center in quadrant to form stage
+                ]
+
+#   The Translate vector can be simplified somewhat by defining the TY function 
+#       outside the picture.
+
+myTY1(x,time) :: cos((x*360)+(time*360));
+
+#   3-Valued Vectors 
+#   It might be useful to have functions that return a 3-valued vector that can be
+#       used anywhere a vector is expected. perhaps with another operator, ":::" .
+#       Then there would be two types of functions: Single-valued and Triple-valued.
+#       The Vector-returning function may be defined by nothing more than three 
+#       SVF's together in a list.
+#           VecFun(arguments):::[function1 definition,
+#                                function2 definition,
+#                                function3 definition]
+
+#   Picture_Functions
+#   Since we may have many other functions to be plotted, we can generalize
+#       the function-drawing routine by making it a picture_function, "funplot" 
+#       which takes the function to be plotted as an argument.
+#   For the moment, i've introduced a new operator, "<<<" , 
+#       for "is a picture_function defined by" but this may not be necessary
+#       as any picture definition that takes an argument is a picture_function. 
+funplot(TYfunction) <<< cube[{20}   * (.125, .04, .01)              # 1. scale cube to thin vertical slab.
+                                    * (.5, 4, 5)                    #
+                                    + (i, TYfunction(i, $t), .05)   # 2. Now the TY parameter references the
+                                                                    #     the argument to the picture_function.
+                                    * (1,.5,1)      # 3. Halve the height of the curve from 2.0 to 1.0
+                                    + (0,.5,0)      # 4. Move the curve up .5 to center in 1st quadrant.
+                            ]
+cosine  <<  funplot(myTY1)  # now the 'cosine' picture can be defined as a 'funplot'
+                            # with "myTY1" as the function to be plotted.
+    
+# For more flexibility, numpix could be made an argument too.
+funplot(TYfunction, numpix) <<< cube[{numpix} 
+                                    * (.125, .04, .01)            # 1. scale cube to thin vertical slab.
+                                    * (.5, 4, 5)                    # 
+                                    + (i, TYfunction(i, $t), .05)   # 2. Now the TY parameter references the
+                                                                    #     the argument to the picture_function.
+                                    * (1,.5,1)      # 3. Halve the height of the curve from 2.0 to 1.0
+                                    + (0,.5,0)      # 4. Move the curve up .5 to center in 1st quadrant.
+                            ]
+ 
+#   And the call would become:
+cosine  <<  funplot(myTY1, 100)  # 'cosine' is the function, myTY1 plotted with 100 cubes.
+
+# Another example of a picture_function is one that takes any picture as the Basis
+# and creates a 2-dimensional array like a wallpaper pattern.  The picture_function
+# depends on the "modulo" and "step" functions to create the array.
+    
+MakeArray(base=cube, rows=4, cols=2, numpix=rows*cols) <<< base[{numpix}
+                                            * (1/cols, 1/rows, 1)  # scale factor 1/(rows*cols)
+                                            + (modulo(i*steps,cols)/cols, # tx = modulo function
+                                               step(i*steps,cols)/cols/cols,   # ty = step function
+                                               0)              # tz = no change; 2D pattern
+                                          ]
+
+# 4x4 array of the previously defined cosine picture.
+#wallpaper << MakeArray(cosine, 4, 4, 16)
+
+# cosine functions are linking up to form continuous wave.
+# to defeat that we can at a rotation to the basis picture:
+wallpaper << MakeArray(cosine[@(0,0,45)],4,4) # 4x4 array of the previously defined cosine picture
+
+# Draw wallpaper now yields  Pic08.png
+Draw {400}[wallpaper, floor]  # $t goes from 0. to 1. in 400 frames.

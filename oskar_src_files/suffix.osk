@@ -1,0 +1,12 @@
+cosine  <<  cube[{80}   * (.5,4,5)               # 1. scale cube to thin vertical slab
+                        + (i, myTY1(i,$t), .05)  # 2. Now the TY parameter references the
+                                                 # myTY1 function, with 'i' and '$t' values for
+                                                 #  'x' and 'time.'
+                        * (1,.5,1)          # 3. Halve the height of the curve from 2.0 to 1.0  
+                        + (0,.5,0)          # 4. Move the curve up .5 to center in 1st quadrant.
+                ]
+                
+#   The Draw command and resulting picture are the same:  Pic05.png
+
+#   The 400-frame animation in Pic06.gif                
+Draw { 0.,1.,400}[ floor, cosine ]      # $t goes from 0. to 1. in 400 frames

@@ -1,0 +1,26 @@
+floor   <<  cube[{1}* (2,2,.02)         # 1. scale cube down to very thin slab on z-axis
+                                        # and expand to twice size in x and y
+                                        # to form background for other pics
+                    + (-.5,-.5,-.05)    # 2. center in quadrant to form stage  
+                ]
+
+cosine  <<  cube[{80}   * (.0125, .02, .02) # 1.  scale cube to thin vertical slab
+                        * (.5, 4, 5)        # 1b. Apply second scaling.
+                        + (i,cos((i*360)+($t*360)),.05)  
+                                        # 2. Translation Vector (TX,TY,TZ):
+                                        # TX - spread out the 80 cubes between 0. and 1.
+                                        #       horizontally along the x-axis.
+                                        # TY - cubes positioned vertically according to
+                                        #   height of cosine function. Argument to
+                                        #   cos function, (i*360) gives 80 values from
+                                        #   0 to 360.  ($t*360) moves curve over time, 
+                                        #   one complete 360 degree cycle.
+                                        # TZ - just raises curve up off of floor.
+                        * (1,.5,1)      # 3. Halve the height of the curve from 2.0 to 1.0  
+                        + (0,.5,0)      # 4. Move the curve up .5 to center in 1st quadrant.
+                                        # Color (.3,.6,.9,.5)
+                ]
+        
+#   Command for Pic05.png
+
+Draw [ floor, cosine ]
