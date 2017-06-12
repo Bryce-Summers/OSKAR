@@ -19,7 +19,7 @@ Note: this needs the Haskell programming language installed to run.
 4. You should now see an OpenSCAD file called "output.scad" Try running it and hopefully you will see your desired output.
 
 # Error Messages.
-Error messages are now working, which output a likely cause of the error along with the line and column numbers that the errors occured at.
+The OSKAR compiler outputs (File, line number, Column number) error messages for certain types of syntax or type errors. Please let me know if you try to compile a malformed OSKAR file and an appropriate error message is not displayed.
 
 
 # Sublime.
