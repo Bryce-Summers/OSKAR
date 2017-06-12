@@ -57,7 +57,7 @@ cosine  <<  funplot(myTY1, 100)  # 'cosine' is the function, myTY1 plotted with 
 # and creates a 2-dimensional array like a wallpaper pattern.  The picture_function
 # depends on the "modulo" and "step" functions to create the array.
     
-MakeArray(base=cube, rows=4, cols=2, numpix=rows*cols) <<< base[{numpix}
+MakeArray(base=cube, rows=4, cols=2, numpix) <<< base[{numpix}
                                             * (1/cols, 1/rows, 1)  # scale factor 1/(rows*cols)
                                             + (modulo(i*steps,cols)/cols, # tx = modulo function
                                                step(i*steps,cols)/cols/cols,   # ty = step function

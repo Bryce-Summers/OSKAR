@@ -2,8 +2,8 @@ import Data.Time
 import Text.Read
 
 main = do  
-        --contents_io  <- readFile "../oskar_src_files/input.osk"
-        contents_io  <- readFile "../oskar_src_files/pic6.osk"
+        contents_io  <- readFile "../oskar_src_files/input.osk"
+        --contents_io  <- readFile "../oskar_src_files/pic7.osk"
         timestamp_io <- getZonedTime
 
         -- Once we go into pure functional land, we no longer
